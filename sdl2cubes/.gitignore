@@ -1,0 +1,5 @@
+deps/
+res/
+*.o
+*.d
+*.trace

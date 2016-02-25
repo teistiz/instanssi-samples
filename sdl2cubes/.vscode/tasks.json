@@ -1,0 +1,39 @@
+// Available variables which can be used inside of strings.
+
+// ${workspaceRoot}: the root folder of the team
+// ${file}: the current opened file
+// ${fileBasename}: the current opened file's basename
+// ${fileDirname}: the current opened file's dirname
+// ${fileExtname}: the current opened file's extension
+// ${cwd}: the current working directory of the spawned process
+
+{
+    "version": "0.1.0",
+    "showOutput": "always",
+    "isShellCommand": true,
+    "command": "make",
+    "windows": {
+        "taskName": "build",
+        "command": "${workspaceRoot}/msys_make.bat"
+    },
+    /*"tasks": [{
+        "taskName": "test",
+        "command": "${workspaceRoot}/sdl2cubes.exe"
+    }],*/
+    "unix": {
+        "command": "make"
+    },
+    "problemMatcher": {
+        "owner": "cpp",
+        "fileLocation": ["relative", "${workspaceRoot}"],
+        "pattern": {
+            // match strings like "main.c:88:19: warning: unused parameter 'dt' [-Wunused-parameter]"
+            "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "severity": 4,
+            "message": 5
+        }
+    }
+}

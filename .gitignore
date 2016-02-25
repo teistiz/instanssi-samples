@@ -1,0 +1,6 @@
+msys32/
+*.d
+*.o
+*.trace
+*.exe
+*.dll
