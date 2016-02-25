@@ -11,18 +11,17 @@ INCLUDE_PATHS :=
 ifdef SYSTEMROOT
 	# probably Windows/MSYS
 	OUT := $(OUT).exe
+	CC := $(CC).exe
 
-    CC := $(CC).exe
+	CFLAGS += -static
+	LDFLAGS += -static
 
-    CFLAGS += -static
-    LDFLAGS += -static
-
-	LIBS += mingw32 SDL2_image SDL2main SDL2.dll glew32s opengl32
+	LIBS += mingw32 SDL2main SDL2.dll glew32s opengl32
 	INCLUDE_PATHS += deps/include
 	LIB_PATHS += deps/lib
 else
 	# probably Unix-ish
-	LIBS += GLEW GL SDL2_image SDL2 m
+	LIBS += GLEW GL SDL2 m
 endif
 
 LIBS += vorbisfile vorbis ogg

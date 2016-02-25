@@ -1,6 +1,6 @@
 /**
  * main.c
- * More cubes! This time in C++11.
+ * More cubes! This time in C11.
  * License: WTFPL
  */
 
@@ -10,7 +10,7 @@
 #define GLEW_STATIC
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
+#include "image.h"
 #include "audio.h"
 #include "shaders.h"
 
@@ -63,8 +63,6 @@ typedef struct {
 
 AudioState g_audioState;
 void generateAudio(void *userdata, Uint8 *stream, int len);
-
-GLuint loadImageToTexture(const char *file);
 
 void handleWindowResize(int width, int height) {
     g_windowWidth = width;
@@ -310,45 +308,4 @@ int runDemo(float dt) {
     // show what we just drew
     SDL_GL_SwapWindow(g_sdlWindow);
     return 1;
-}
-
-GLuint loadImageToTexture(const char *filename) {
-    GLuint tex = 0;
-
-    SDL_Surface *image = IMG_Load(filename);
-    if(!image) {
-        fprintf(stderr, "error: can't load image: %s\n", filename);
-        return 0;
-    }
-
-    GLsizei width = image->w;
-    GLsizei height = image->h;
-    GLenum format, internalFormat;
-    // This doesn't come close to covering all SDL image formats,
-    // but works with our image files at least.
-    SDL_PixelFormat *pixelFormat = image->format;
-    if(pixelFormat->BitsPerPixel == 32) {
-        internalFormat = GL_RGBA;
-        format = GL_BGRA;
-    } else if(pixelFormat->BitsPerPixel == 24) {
-        internalFormat = GL_RGB;
-        format = GL_BGR;
-    } else {
-        // we could handle palette textures at least...
-        fprintf(stderr, "error: unsupported pixel format: %s\n", filename);
-        goto exit;
-    }
-
-    glGenTextures(1, &tex);
-    glActiveTexture(GL_TEXTURE0 + 0);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height,
-                 0, format, GL_UNSIGNED_BYTE, image->pixels);
-
-    // if we need mips, call glGenerateMipmaps and set this to MIPMAP_LINEAR
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-exit:
-    SDL_FreeSurface(image);
-    return tex;
 }
