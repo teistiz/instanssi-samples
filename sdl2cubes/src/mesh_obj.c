@@ -1,4 +1,4 @@
-#include "mesh.h"
+#include "mesh_obj.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -59,11 +59,13 @@ Mesh* meshReadOBJ(const char *filename) {
     return mesh;
 }
 
-unsigned meshGetNumFloats(Mesh *mesh) {
-    // each triangle is 3 vertex definitions (vec3, vec2, vec3)
-    return mesh->stats.triangles * 3 * (3 + 2 + 3);
+unsigned meshGetNumVertices(Mesh *mesh) {
+    return mesh->stats.triangles * 3;
 }
-
+unsigned meshGetNumFloats(Mesh *mesh) {
+    // each triangle is 3 vertices (vec3 pos, vec2 tex, vec3 normal)
+    return meshGetNumVertices(mesh) * (3 + 2 + 3);
+}
 unsigned* meshGetIndexPtr(Mesh *mesh) { return mesh->indices; }
 float* meshGetVertexPtr(Mesh *mesh) { return mesh->attribs; }
 float* meshGetTexPtr(Mesh *mesh) {

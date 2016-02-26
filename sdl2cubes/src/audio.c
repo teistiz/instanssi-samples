@@ -38,6 +38,7 @@ struct AudioReader* arInit(const char *filename) {
     AudioReader *reader = malloc(sizeof(AudioReader));
     memset(reader, 0, sizeof(AudioReader));
     reader->file = file;
+    // close can be omitted if we handle that
     ov_callbacks cb = { vbRead, vbSeek, NULL, vbTell };
     int res = ov_open_callbacks(reader, &reader->vorbisFile, NULL, 0, cb);
     if(res) {

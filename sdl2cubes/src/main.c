@@ -14,13 +14,20 @@
 #include "image.h"
 #include "audio.h"
 #include "shaders.h"
-#include "mesh.h"
+#include "mesh_obj.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
+typedef struct RenderMesh {
+    GLuint vertexArray; // vertex array object id
+    GLuint buffer;      // buffer object id
+    unsigned vertices;  // number of vertices
+} RenderMesh;
+
 const char *WINDOW_TITLE = "ebin_cubes";
+enum { AUDIO_SAMPLES = 8192 };
 
 SDL_Window *g_sdlWindow = NULL;
 int g_windowWidth = 1280;
@@ -30,11 +37,6 @@ int g_paused = 0;
 unsigned g_mouseButtons = 0;
 float g_aspect = 16.0f/9.0f;
 
-const float MIN_FOCUS = 10.0f;
-
-
-enum { AUDIO_SAMPLES = 8192 };
-
 SDL_AudioDeviceID g_audioDevice;
 
 Uint32 g_ticks, g_lastTicks;
@@ -43,28 +45,34 @@ float g_time = 0;
 GLuint g_shaderBlobs = 0;
 GLuint g_texFace = 0;
 GLuint g_texAtlas = 0;
-GLuint g_bufVertices = 0;
-GLuint g_vaRect = 0;
-GLuint g_vaSphere = 0;
 
+GLuint g_bufQuad = 0;
+GLuint g_vaQuad = 0;
+
+GLint g_glUniformAlignment = 0;
+
+RenderMesh g_meshSphere;
+/*
 Mesh *g_meshSphere = NULL;
-GLuint g_bufSphereVertices = 0;
+GLuint g_bufSphereVertices = 0;*/
 
-typedef struct {
-    float sound[4];
-    float cameraPos[4];
-    float cameraMotion[4];
-    float aspect;
-    float time;
-    float focusDistance;
-} ShaderGlobals;
+typedef struct MeshUniforms {
+    float projection[16];
+    float view[16];
+} MeshUniforms;
+
+RenderMesh loadMeshToArray(const char *filename);
+void addMeshSource(RenderMesh *dest, const char *filename) {
+    // TODO: Implement like the shader one
+    *dest = loadMeshToArray(filename);
+}
 
 GLuint g_ubGlobals = 0;
 
 int initDemo();
 int runDemo(float dt);
 
-typedef struct {
+typedef struct AudioState {
     AudioReader *reader;
 } AudioState;
 
@@ -121,6 +129,8 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "glewInit failed!\n");
         return 1;
     }
+    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &g_glUniformAlignment);
+
     if(!initDemo()) {
         fprintf(stderr, "initDemo failed!\n");
         return 1;
@@ -184,7 +194,8 @@ int main(int argc, char *argv[]) {
                         g_mouseButtons &= ~mask;
                     }
                     // if either one of the interesting buttons is down, grab mouse
-                    SDL_SetRelativeMouseMode(g_mouseButtons & 3 ? SDL_TRUE : SDL_FALSE);
+                    SDL_SetRelativeMouseMode(
+                        g_mouseButtons & 3 ? SDL_TRUE : SDL_FALSE);
                     break;
                 }
                 case SDL_QUIT: {
@@ -224,8 +235,11 @@ void initBuffers();
 
 // demo init code goes here.
 int initDemo() {
-    addShaderSource(&g_shaderBlobs, "test_vertex.glsl", "test_fragment.glsl",
-                    NULL, NULL);
+    addShaderSource(&g_shaderBlobs,
+        "res/test_vertex.glsl", "res/test_fragment.glsl", NULL, NULL);
+
+    addMeshSource(&g_meshSphere, "res/unitcube.obj");
+
     reloadShaders();
     initBuffers();
     g_texFace = loadImageToTexture("res/quality_graphics.png");
@@ -234,16 +248,21 @@ int initDemo() {
     return 1;
 }
 
+void drawQuad() {
+    glBindVertexArray(g_vaQuad);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+}
+
 void initBuffers() {
     // Get new buffer handle for our uniforms (shader per-draw variables).
     glGenBuffers(1, &g_ubGlobals);
     glBindBuffer(GL_UNIFORM_BUFFER, g_ubGlobals);
     // GL_DYNAMIC_DRAW hints the buffer is for drawing with frequent updates
     // See: https://www.opengl.org/sdk/docs/man/html/glBufferData.xhtml .
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(ShaderGlobals), NULL,
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(MeshUniforms), NULL,
                  GL_DYNAMIC_DRAW);
 
-    float testVertices[] = {
+    float quadVertices[] = {
         1.0f, 1.0f,
         -1.0f, 1.0f,
         -1.0f, -1.0f,
@@ -251,10 +270,10 @@ void initBuffers() {
     };
 
     // make some data for a rectangle so we can render stuff
-    glGenBuffers(1, &g_bufVertices);
-    glBindBuffer(GL_ARRAY_BUFFER, g_bufVertices);
+    glGenBuffers(1, &g_bufQuad);
+    glBindBuffer(GL_ARRAY_BUFFER, g_bufQuad);
     // GL_STATIC_DRAW hints this is static (e.g. mesh) data for drawing
-    glBufferData(GL_ARRAY_BUFFER, sizeof(testVertices), testVertices,
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices,
                  GL_STATIC_DRAW);
 
     // Vertex Array Objects store vertex input state.
@@ -263,40 +282,13 @@ void initBuffers() {
     // NOTE: The GL_ELEMENT_ARRAY_BUFFER binding is part of the VAO's state.
     // If you need to bind those somewhere else (e.g. to generate them),
     // make a scratchpad VAO just for that or you may experience pain.
-    glGenVertexArrays(1, &g_vaRect);
-    glBindVertexArray(g_vaRect);
+    glGenVertexArrays(1, &g_vaQuad);
+    glBindVertexArray(g_vaQuad);
     glEnableVertexAttribArray(0); // enable the VAO's attrib #0
     // Set vertex attribute #0 to read 2x float (vec2) from the currently
     // bound ARRAY_BUFFER, with no normalization, 0 stride (= tight packing)
     // starting from offset 0 in the buffer.
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
-
-    g_meshSphere = meshReadOBJ("res/unitsphere.obj");
-
-    glGenBuffers(1, &g_bufSphereVertices);
-    glBindBuffer(GL_ARRAY_BUFFER, g_bufSphereVertices);
-    glBufferData(GL_ARRAY_BUFFER,
-        sizeof(float) * meshGetNumFloats(g_meshSphere),
-        NULL, GL_STATIC_DRAW);
-
-    void *ptr = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-    meshPackVertices(g_meshSphere, (float*)ptr);
-    glUnmapBuffer(GL_ARRAY_BUFFER);
-
-    glGenVertexArrays(1, &g_vaSphere);
-    glBindVertexArray(g_vaSphere);
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    glEnableVertexAttribArray(2);
-    // Bind vertex inputs for vertex positions, texture coords and normals.
-    // The offsets (last argument) are relative to the ARRAY_BUFFER
-    // bound when these calls are made.
-    unsigned stride = sizeof(float) * (3+2+3);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride,
-                          (void*)(sizeof(float) * 3));
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride,
-                          (void*)(sizeof(float) * (3 + 2)));
 }
 
 // demo script and rendering goes here. return 0 to quit.
@@ -317,28 +309,64 @@ int runDemo(float dt) {
     glUseProgram(g_shaderBlobs);
 
     // ---- pass per-frame globals ----
-    ShaderGlobals globals;
+    MeshUniforms globals;
 
     // select our uniform buffer again
     glBindBuffer(GL_UNIFORM_BUFFER, g_ubGlobals);
     // upload new data
     // if this is still slow on AMD, make more buffers and cycle between them
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(ShaderGlobals), &globals);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(MeshUniforms), &globals);
     // set uniform binding point #0 to point at the buffer
     glBindBufferRange(GL_UNIFORM_BUFFER, 0, g_ubGlobals, 0,
-                      sizeof(ShaderGlobals));
+                      sizeof(MeshUniforms));
 
     // bind the test texture to sampler 0
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, g_texFace);
 
-    // this restores the bindings we had earlier
-    glBindVertexArray(g_vaSphere);
-
-    // this is the most basic way to put a rectangle on the screen.
-    glDrawArrays(GL_TRIANGLES, 0, g_meshSphere->stats.indices / 3);
+    // this restores the vertex array bindings we made earlier
+    glBindVertexArray(g_meshSphere.vertexArray);
+    glDrawArrays(GL_TRIANGLES, 0, g_meshSphere.vertices);
 
     // show what we just drew
     SDL_GL_SwapWindow(g_sdlWindow);
     return 1;
+}
+
+RenderMesh loadMeshToArray(const char *filename) {
+    Mesh *meshObj = meshReadOBJ(filename);
+    RenderMesh renderMesh;
+
+    memset(&renderMesh, 0, sizeof(RenderMesh));
+    if(!meshObj) { // obj load failed
+        return renderMesh;
+    }
+    renderMesh.vertices = meshGetNumVertices(meshObj);
+    unsigned stride = sizeof(float) * (3+2+3);
+
+    glGenBuffers(1, &renderMesh.buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, renderMesh.buffer);
+    glBufferData(GL_ARRAY_BUFFER, renderMesh.vertices * stride, NULL,
+                 GL_STATIC_DRAW);
+
+    void *ptr = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+    meshPackVertices(meshObj, (float*)ptr);
+    glUnmapBuffer(GL_ARRAY_BUFFER);
+
+    glGenVertexArrays(1, &renderMesh.vertexArray);
+    glBindVertexArray(renderMesh.vertexArray);
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
+    // Bind vertex inputs for vertex positions, texture coords and normals.
+    // The offsets (last argument) are set relative to the ARRAY_BUFFER
+    // bound when glVertexAttribPointer is called.
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride,
+                          (void*)(sizeof(float) * 3));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride,
+                          (void*)(sizeof(float) * (3 + 2)));
+
+    glBindVertexArray(0);
+    return renderMesh;
 }

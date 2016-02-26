@@ -9,6 +9,8 @@ unsigned loadImageToTexture(const char *filename) {
     GLuint tex = 0;
     GLenum format, internalFormat;
     int width = 0, height = 0, components = 0;
+
+    // This can load many image formats, including PNG and JPEG.
     unsigned char *image = stbi_load(filename, &width, &height, &components, 0);
 
     if(!image) {
@@ -21,11 +23,9 @@ unsigned loadImageToTexture(const char *filename) {
     // We could pass nonzero components to stbi_load to request a specific
     // pixel format if we really wanted to.
     if(components == 4) {
-        internalFormat = GL_RGBA;
-        format = GL_RGBA;
+        internalFormat = format = GL_RGBA;
     } else if(components == 3) {
-        internalFormat = GL_RGB;
-        format = GL_RGB;
+        internalFormat = format = GL_RGB;
     } else {
         fprintf(stderr, "error: unsupported pixel format: %s\n", filename);
         goto exit;
