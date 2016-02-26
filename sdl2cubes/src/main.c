@@ -212,11 +212,9 @@ int main(int argc, char *argv[]) {
 }
 
 void generateAudio(void *userdata, Uint8 *stream, int len) {
-    //SDL_LockMutex(g_fft_mutex);
     AudioState *state = (AudioState*)userdata;
-    //short *samples = (short*)stream;
     int ofs = arRead(state->reader, stream, len);
-    // set any remaining length to 0
+    // set any remaining buffer to 0
     if(len - ofs) {
         memset(stream + ofs, 0, len - ofs);
     }
@@ -277,8 +275,10 @@ void initBuffers() {
 
     glGenBuffers(1, &g_bufSphereVertices);
     glBindBuffer(GL_ARRAY_BUFFER, g_bufSphereVertices);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * meshGetNumFloats(g_meshSphere),
-                 NULL, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,
+        sizeof(float) * meshGetNumFloats(g_meshSphere),
+        NULL, GL_STATIC_DRAW);
+
     void *ptr = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
     meshPackVertices(g_meshSphere, (float*)ptr);
     glUnmapBuffer(GL_ARRAY_BUFFER);
@@ -308,7 +308,7 @@ int runDemo(float dt) {
     // to check if stuff is habbening
 
     // render and present
-    glClearColor(1, 0, 0, 0);
+    glClearColor(1, 0.25, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT);
 
     glDisable(GL_CULL_FACE);
@@ -329,7 +329,7 @@ int runDemo(float dt) {
                       sizeof(ShaderGlobals));
 
     // bind the test texture to sampler 0
-    glActiveTexture(GL_TEXTURE0 + 0);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, g_texFace);
 
     // this restores the bindings we had earlier

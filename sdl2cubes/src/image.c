@@ -1,12 +1,5 @@
 #include "image.h"
 #define STB_IMAGE_IMPLEMENTATION
-#define STBI_NO_BMP
-#define STBI_NO_PSD
-#define STBI_NO_TGA
-#define STBI_NO_GIF
-#define STBI_NO_HDR
-#define STBI_NO_PIC
-#define STBI_NO_PNM
 #include <stb_image.h>
 #define GLEW_STATIC
 #include <GL/glew.h>
@@ -14,8 +7,8 @@
 
 unsigned loadImageToTexture(const char *filename) {
     GLuint tex = 0;
-
-    int width, height, components = 0;
+    GLenum format, internalFormat;
+    int width = 0, height = 0, components = 0;
     unsigned char *image = stbi_load(filename, &width, &height, &components, 0);
 
     if(!image) {
@@ -23,7 +16,6 @@ unsigned loadImageToTexture(const char *filename) {
         return 0;
     }
 
-    GLenum format, internalFormat;
     // This doesn't come close to covering all possible formats,
     // but is good enough for our test files.
     // We could pass nonzero components to stbi_load to request a specific
@@ -41,7 +33,7 @@ unsigned loadImageToTexture(const char *filename) {
 
     glGenTextures(1, &tex);
     // let's at least be consistent about which slot gets side effects
-    glActiveTexture(GL_TEXTURE0 + 0);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
     // allocate and initialize the texture with our image data
     glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height,

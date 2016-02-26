@@ -2,7 +2,7 @@
 #define CUBES_MESH_H
 
 typedef struct MeshStats {
-    unsigned vertices, normals, texcoords, indices;
+    unsigned vertices, normals, texcoords, indices, triangles;
 } MeshStats;
 
 typedef struct Mesh {

@@ -60,7 +60,8 @@ Mesh* meshReadOBJ(const char *filename) {
 }
 
 unsigned meshGetNumFloats(Mesh *mesh) {
-    return mesh->stats.indices / 3 * (3+2+3);
+    // each triangle is 3 vertex definitions (vec3, vec2, vec3)
+    return mesh->stats.triangles * 3 * (3 + 2 + 3);
 }
 
 unsigned* meshGetIndexPtr(Mesh *mesh) { return mesh->indices; }
@@ -154,24 +155,26 @@ void meshOutput(Mesh *mesh, FILE *file) {
     float *pNormals = meshGetNormalPtr(mesh);
 
     for(unsigned i=0; i<stats->vertices; i++) {
-        printf("v %f %f %f\n", pVertices[i*3], pVertices[i*3+1], pVertices[i*3+2]);
+        fprintf(file, "v %f %f %f\n",
+                pVertices[i*3], pVertices[i*3+1], pVertices[i*3+2]);
     }
     for(unsigned i=0; i<stats->texcoords; i++) {
-        printf("vt %f %f\n", pTexCoords[i*2], pTexCoords[i*2+1]);
+        fprintf(file, "vt %f %f\n", pTexCoords[i*2], pTexCoords[i*2+1]);
     }
     for(unsigned i=0; i<stats->normals; i++) {
-        printf("vn %f %f %f\n", pNormals[i*3], pNormals[i*3+1], pNormals[i*3+2]);
+        fprintf(file, "vn %f %f %f\n",
+                pNormals[i*3], pNormals[i*3+1], pNormals[i*3+2]);
     }
 
     for(unsigned i=0; i<stats->indices; i += 9) {
         unsigned *f = &pIndices[i];
-        printf("f %u/%u/%u %u/%u/%u %u/%u/%u\n",
+        fprintf(file, "f %u/%u/%u %u/%u/%u %u/%u/%u\n",
             f[0]+1, f[1]+1, f[2]+1, f[3]+1, f[4]+1, f[5]+1, f[6]+1, f[7]+1, f[8]+1);
     }
 }
 
 void meshPackVertices(Mesh *mesh, float *buffer) {
-    meshOutput(mesh, stdout);
+    //meshOutput(mesh, stdout);
     MeshStats *stats = &mesh->stats;
 
     unsigned *pIndices = meshGetIndexPtr(mesh);
@@ -224,6 +227,7 @@ int tallyOBJFile(FILE *file, MeshStats *stats) {
             }
             // these are triangles, so each face is three index triplets
             stats->indices += 9;
+            stats->triangles++;
         }
     }
     return 1;

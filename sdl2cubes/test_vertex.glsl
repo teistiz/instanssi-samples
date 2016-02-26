@@ -1,18 +1,23 @@
 #version 330
 
- // this is the vertex pos input by default
-layout(location=0) in vec3 pos;
-layout(location=1) in vec2 tex;
-layout(location=2) in vec3 normal;
+layout(std140) uniform MeshUniforms {
+    mat4 projection;
+    mat4 view;
+};
+
+// Declare vertex format.
+// This should match what was done with glVertexAttribPointer.
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec2 aTex;
+layout(location=2) in vec3 aNormal;
 
 // This is passed to next shader stage.
-out vec2 texCoord;
+out vec2 vertexT;
+out vec3 vertexN;
 
 void main() {
-    // map vertex pos [-1..1] ranges to [0..1]
-    texCoord = vec2(pos.xy) * 0.5 + 0.5;
-    // also, flip the texture since GL texcoord (0, 0) is bottom left
-    texCoord.y = 1.0 - texCoord.y;
+    vertexT = aTex;
+    vertexN = aNormal;
     // just pass the vertices to rasterization as-is
-    gl_Position = vec4(pos, 1.0);
+    gl_Position = vec4(aPos, 1.0);
 }
