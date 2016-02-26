@@ -2,6 +2,8 @@
 
  // this is the vertex pos input by default
 layout(location=0) in vec3 pos;
+layout(location=1) in vec2 tex;
+layout(location=2) in vec3 normal;
 
 // This is passed to next shader stage.
 out vec2 texCoord;
