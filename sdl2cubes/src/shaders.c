@@ -63,7 +63,7 @@ void buildShaderFromSpecs(ShaderSourceSpec *spec) {
     GLuint program = 0, vertex = 0, fragment = 0, geometry = 0;
     GLint ok = 0;
 
-    vertex = buildShaderStageFromFile(GL_VERTEX_SHADER, spec->vtxFile);
+    vertex = buildShaderStageFromFile(GL_VERTEX_SHADER, spec->vertFile);
     if(!vertex) {
         goto exit;
     }
@@ -146,7 +146,7 @@ void reloadShaders() {
     }
 }
 
-void addShaderSource(GLuint *idPtr, const char *vtxFile, const char *fragFile,
+void addShaderSource(GLuint *idPtr, const char *vertFile, const char *fragFile,
                      const char *geomFile,
                      void (*postCompile)(ShaderSourceSpec *)) {
     ShaderSourceSpec *spec =
@@ -154,7 +154,7 @@ void addShaderSource(GLuint *idPtr, const char *vtxFile, const char *fragFile,
     memset(spec, 0, sizeof(ShaderSourceSpec));
 
     spec->idPtr       = idPtr;
-    spec->vtxFile     = vtxFile;
+    spec->vertFile    = vertFile;
     spec->fragFile    = fragFile;
     spec->geomFile    = geomFile;
     spec->postCompile = postCompile;

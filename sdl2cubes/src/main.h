@@ -8,6 +8,7 @@ extern int g_glUniformAlignment;
 extern int g_paused;
 
 void setSoundtrack(const char *file);
+void setWindowTitle(const char *title);
 void presentWindow();
 
 #endif

@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
     if(g_fullScreen) {
         flags |= SDL_WINDOW_FULLSCREEN;
     }
-    g_sdlWindow = SDL_CreateWindow(WINDOW_TITLE, SDL_WINDOWPOS_UNDEFINED,
+    g_sdlWindow = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED,
                                    SDL_WINDOWPOS_UNDEFINED, g_windowWidth,
                                    g_windowHeight, flags);
 
@@ -173,6 +173,7 @@ int main(int argc, char *argv[]) {
         frameCounter++;
     }
 
+    SDL_CloseAudioDevice(g_audioDevice);
     SDL_DestroyWindow(g_sdlWindow);
     SDL_Quit();
 
@@ -182,6 +183,10 @@ int main(int argc, char *argv[]) {
 void setSoundtrack(const char *filename) {
     assert(!g_audioState.reader);
     g_audioState.reader = arInit(filename);
+}
+
+void setWindowTitle(const char *title) {
+    SDL_SetWindowTitle(g_sdlWindow, title);
 }
 
 void generateAudio(void *userdata, Uint8 *stream, int len) {

@@ -1,12 +1,5 @@
 // Place your settings in this file to overwrite default and user settings.
 {
-    // Compiler options for C (e.g. ['-std=c99'])
-    "clang.cflags": [
-        "-std=c99",
-        "-isystem", "${workspaceRoot}/deps/include",
-        "-isystem", "${workspaceRoot}/../msys32/mingw32/include",
-        "-isystem", "${workspaceRoot}/../msys32/mingw32/usr/include"
-    ],
     "files.trimTrailingWhitespace": true,
     "files.exclude": {
         "src/*.d": true,

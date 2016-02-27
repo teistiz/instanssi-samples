@@ -14,10 +14,13 @@
 
 const char *WINDOW_TITLE = "cubes!?";
 
+float g_time = 0;
+
 // This can be passed to shaders as-is, as long as it matches GLSL's layout
 // rules. Basically things are aligned to their size, except that
 // vec3 aligns like vec4 and matrices align to their column size
 // (vec2/vec3/vec4). Arrays align to their elements' size (iirc).
+// See https://www.opengl.org/registry/doc/glspec45.core.pdf#page=159 .
 typedef struct MeshUniforms {
     Transform projection;
     Transform view;
@@ -32,15 +35,14 @@ typedef struct RenderMesh {
     unsigned vertices;  // number of vertices
 } RenderMesh;
 
-GLuint g_shaderBlobs = 0;
-GLuint g_texFace     = 0;
-GLuint g_texAtlas    = 0;
-GLuint g_bufQuad     = 0;
-GLuint g_vaQuad      = 0;
-GLuint g_ubGlobals   = 0;
-RenderMesh g_meshSphere;
+GLuint g_vaQuad    = 0; // vertex array for the quad
+GLuint g_bufQuad   = 0; // data buffer for the quad
+GLuint g_ubGlobals = 0; // uniform buffer for shader params
 
-float g_time = 0;
+GLuint g_texTest    = 0; // test texture
+GLuint g_texAtlas   = 0; // overlay graphics
+GLuint g_shaderMesh = 0; // shader for simple meshes
+RenderMesh g_meshSphere; // mesh object
 
 void loadMesh(RenderMesh *dest, const char *filename);
 void loadTexture(GLuint *dest, const char *filename);
@@ -50,17 +52,20 @@ void drawQuad();
 
 // demo init code goes here.
 int initDemo() {
+    setWindowTitle(WINDOW_TITLE);
     // This starts playing when init has finished.
-    setSoundtrack("res/test.ogg");
+    setSoundtrack("res/track.ogg");
 
     g_tfProjection = tfIdentity();
     tfsCreate(&g_tfsView, 64);
 
     loadMesh(&g_meshSphere, "res/unitcube.obj");
-    loadTexture(&g_texFace, "res/quality_graphics.png");
+    loadTexture(&g_texTest, "res/quality_graphics.png");
 
-    addShaderSource(&g_shaderBlobs, "res/test_vertex.glsl",
-                    "res/test_fragment.glsl", NULL, NULL);
+    addShaderSource(&g_shaderMesh, "res/mesh.vert.glsl", "res/mesh.frag.glsl",
+                    NULL, NULL);
+    addShaderSource(&g_shaderMesh, "res/postfx.vert.glsl",
+                    "res/postfx.frag.glsl", NULL, NULL);
 
     reloadShaders();
     initBuffers();
@@ -86,7 +91,7 @@ int runDemo(float dt) {
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
 
-    glUseProgram(g_shaderBlobs);
+    glUseProgram(g_shaderMesh);
 
     // ---- pass per-frame globals ----
     tfsClear(g_tfsView); // reset transform stack
@@ -109,7 +114,7 @@ int runDemo(float dt) {
 
     // bind the test texture to sampler 0
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, g_texFace);
+    glBindTexture(GL_TEXTURE_2D, g_texTest);
 
     // this restores the vertex array bindings we made earlier
     glBindVertexArray(g_meshSphere.vertexArray);
@@ -212,6 +217,8 @@ void loadMesh(RenderMesh *dest, const char *filename) {
 void loadTexture(GLuint *dest, const char *filename) {
     *dest = loadImageToTexture(filename);
 }
+
+// ---- potentially buggy linear algebra follows ----
 
 void tfsClear(TransformStack *tfs) {
     tfs->t[0] = tfIdentity();

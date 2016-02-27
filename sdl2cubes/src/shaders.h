@@ -1,18 +1,13 @@
 #ifndef CUBES_SHADERS_H
 #define CUBES_SHADERS_H
 
-#include <time.h>
-
 typedef struct ShaderSourceSpec ShaderSourceSpec;
 
 typedef struct ShaderSourceSpec {
     GLuint *idPtr; // address of (global?) id to overwrite
-    const char *vtxFile;
+    const char *vertFile;
     const char *fragFile;
     const char *geomFile;
-    time_t vtxTime;
-    time_t fragTime;
-    time_t geomTime;
     void (*postCompile)(ShaderSourceSpec *);
     ShaderSourceSpec *next;
 } ShaderSourceSpec;

@@ -16,10 +16,6 @@
         "taskName": "build",
         "command": "${workspaceRoot}/msys_make.bat"
     },
-    /*"tasks": [{
-        "taskName": "test",
-        "command": "${workspaceRoot}/sdl2cubes.exe"
-    }],*/
     "unix": {
         "command": "make"
     },
