@@ -10,6 +10,7 @@
 #define GLEW_STATIC
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
+#include <assert.h>
 
 #include "image.h"
 #include "audio.h"
@@ -19,6 +20,137 @@
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+
+typedef struct Transform { float m[16]; } Transform;
+
+Transform tfIdentity();
+Transform tfMultiply(Transform *a, Transform *b);
+
+typedef struct TransformStack {
+    unsigned size;
+    unsigned pos;
+    Transform t[];
+} TransformStack;
+
+void tfsClear(TransformStack *tfs) {
+    tfs->t[0] = tfIdentity();
+    tfs->pos  = 0;
+}
+
+void createTFStack(TransformStack **p, unsigned maxSize) {
+    assert(maxSize > 0);
+    size_t size = offsetof(TransformStack, t) + sizeof(Transform) * maxSize;
+    *p = (TransformStack *)malloc(size);
+    (*p)->size = maxSize;
+    tfsClear(*p);
+}
+
+Transform tfsGet(TransformStack *tfs) { return tfs->t[tfs->pos]; }
+
+void tfsPop(TransformStack *tfs) {
+    assert(tfs->pos > 0);
+    tfs->pos--;
+}
+
+void tfsPush(TransformStack *tfs, Transform tf) {
+    assert(tfs->pos < tfs->size - 1);
+    Transform *prev = &(tfs->t[tfs->pos]);
+    tfs->pos++;
+    tfs->t[tfs->pos] = tfMultiply(prev, &tf);
+}
+
+Transform tfIdentity() {
+    Transform tf;
+    float *m = tf.m;
+    for(int i = 0; i < 4; i++) {
+        for(int j = 0; j < 4; j++) {
+            m[i * 4 + j] = (i == j) ? 1 : 0;
+        }
+    }
+    return tf;
+}
+
+Transform tfMultiply(Transform *a, Transform *b) {
+    Transform tf;
+    float *am = a->m, *bm = b->m;
+    float *m = tf.m;
+    for(int j = 0; j < 4; ++j) {
+        for(int i = 0; i < 4; ++i) {
+            m[i * 4 + j] = 0;
+            for(int k = 0; k < 4; ++k) {
+                m[i * 4 + j] += am[i * 4 + k] * bm[k * 4 + j];
+            }
+        }
+    }
+    return tf;
+}
+
+Transform tfTranslate(float x, float y, float z) {
+    Transform tf = tfIdentity();
+
+    tf.m[12] = x;
+    tf.m[13] = y;
+    tf.m[14] = z;
+    return tf;
+}
+
+Transform tfScale(float s) {
+    Transform tf;
+    memset(&tf, 0, sizeof(tf));
+    tf.m[0]  = s;
+    tf.m[5]  = s;
+    tf.m[10] = s;
+    tf.m[15] = 1;
+    return tf;
+}
+
+Transform tfScale3(float x, float y, float z) {
+    Transform tf;
+    memset(&tf, 0, sizeof(tf));
+    tf.m[0]  = x;
+    tf.m[5]  = y;
+    tf.m[10] = z;
+    tf.m[15] = 1;
+    return tf;
+}
+
+Transform tfRotate(float angle, float x, float y, float z) {
+    Transform t = tfIdentity();
+    float *m    = t.m;
+
+    float c = cosf(angle);
+    float s = sinf(angle);
+    float r = 1.0f - c;
+
+    m[0]  = r * x * x + c;
+    m[1]  = r * y * x + z * s;
+    m[2]  = r * x * z - y * s;
+    m[4]  = r * x * y - z * s;
+    m[5]  = r * y * y + c;
+    m[6]  = r * y * z + x * s;
+    m[8]  = r * x * z + y * s;
+    m[9]  = r * y * z - x * s;
+    m[10] = r * z * z + c;
+    return t;
+}
+
+Transform tfPerspective(float near, float far, float aspect, float fov_y) {
+    Transform tf = tfIdentity();
+
+    float *m = tf.m;
+    float f  = cos(fov_y * 0.5f) / sin(fov_y * 0.5f);
+
+    m[0]  = f / aspect;
+    m[5]  = f;
+    m[10] = (near + far) / (near - far);
+    m[11] = -1.0f;
+    m[14] = 2.0f * (near * far) / (near - far);
+    m[15] = 0.0f;
+    return tf;
+}
+
+Transform g_tfProjection;
+TransformStack *g_tfsView;
 
 typedef struct RenderMesh {
     GLuint vertexArray; // vertex array object id
@@ -52,13 +184,14 @@ GLuint g_vaQuad  = 0;
 GLint g_glUniformAlignment = 0;
 
 RenderMesh g_meshSphere;
-/*
-Mesh *g_meshSphere = NULL;
-GLuint g_bufSphereVertices = 0;*/
 
+// This can be passed to shaders as-is, as long as it matches GLSL's layout
+// rules. Basically things are aligned to their size, except that
+// vec3 aligns like vec4 and matrices align to their column size
+// (vec2/vec3/vec4). Arrays align to their elements' size (iirc).
 typedef struct MeshUniforms {
-    float projection[16];
-    float view[16];
+    Transform projection;
+    Transform view;
 } MeshUniforms;
 
 RenderMesh loadMeshToArray(const char *filename);
@@ -232,6 +365,8 @@ void initBuffers();
 
 // demo init code goes here.
 int initDemo() {
+    g_tfProjection = tfIdentity();
+    createTFStack(&g_tfsView, 64);
     addShaderSource(&g_shaderBlobs, "res/test_vertex.glsl",
                     "res/test_fragment.glsl", NULL, NULL);
 
@@ -285,7 +420,10 @@ void initBuffers() {
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 }
 
-// demo script and rendering goes here. return 0 to quit.
+/**
+ * Demo script and rendering goes here.
+ * Return 0 to quit.
+ */
 int runDemo(float dt) {
     if(!g_paused) {
         g_time += dt;
@@ -294,23 +432,31 @@ int runDemo(float dt) {
     // to check if stuff is habbening
 
     // render and present
-    glClearColor(1, 0.25, 0, 0);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClearColor(.2f, .2f, .2f, 0);
+    glClearDepth(1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glDisable(GL_CULL_FACE);
-    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
 
     glUseProgram(g_shaderBlobs);
 
     // ---- pass per-frame globals ----
-    MeshUniforms globals;
+    tfsClear(g_tfsView); // reset transform stack
+    float s = 1.0 / sqrtf(2);
+    tfsPush(g_tfsView, tfRotate(g_time * 0.5f, 0, s, s));
+    tfsPush(g_tfsView, tfScale(0.5f));
+
+    MeshUniforms uf;
+    uf.projection = tfScale3(1 / g_aspect, 1, 1);
+    uf.view       = tfsGet(g_tfsView);
 
     // select our uniform buffer again
     glBindBuffer(GL_UNIFORM_BUFFER, g_ubGlobals);
     // upload new data
     // if this is still slow on AMD, make more buffers and cycle between them
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(MeshUniforms), &globals);
-    // set uniform binding point #0 to point at the buffer
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(MeshUniforms), &uf);
+    // set uniform binding #0 to point at the buffer
     glBindBufferRange(GL_UNIFORM_BUFFER, 0, g_ubGlobals, 0,
                       sizeof(MeshUniforms));
 

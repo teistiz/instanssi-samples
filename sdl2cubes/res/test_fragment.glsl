@@ -11,5 +11,8 @@ in vec3 vertexN;
 layout(location=0) out vec4 outColor;
 
 void main() {
-    outColor = texture(smpColorTexture, vertexT);
+    vec3 normal = normalize(vertexN);
+    float light = max(0.0, dot(vec3(0, 1, 0), normal));
+    light += 0.2;
+    outColor = texture(smpColorTexture, vertexT) * light;
 }

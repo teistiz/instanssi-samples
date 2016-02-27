@@ -26,16 +26,12 @@ Mesh *meshReadOBJ(const char *filename) {
         fprintf(stderr, "error: unable to open OBJ file %s\n", filename);
         return NULL;
     }
-    // just double parse the file, it's easier
+    // just parse the file twice, it's easier with formats like this
     if(!tallyOBJFile(file, &stats)) {
         fprintf(stderr, "error: unable to parse OBJ file %s\n", filename);
         fclose(file);
         return NULL;
     }
-#if 0
-    printf("v: %d, vn: %d, vt: %d, f: %d\n",
-        stats.vertices, stats.normals, stats.texcoords, stats.faces);
-#endif
     // allocate storage for all of these
     // attribs will be float32, indices will be int32
     size_t attribBytes =
@@ -62,7 +58,7 @@ Mesh *meshReadOBJ(const char *filename) {
 
 unsigned meshGetNumVertices(Mesh *mesh) { return mesh->stats.vertices; }
 unsigned meshGetNumFloats(Mesh *mesh) {
-    // each triangle is 3 vertices (vec3 pos, vec2 tex, vec3 normal)
+    // each vertex is made of a (vec3 pos, vec2 tex, vec3 normal)
     return meshGetNumVertices(mesh) * (3 + 2 + 3);
 }
 unsigned *meshGetIndexPtr(Mesh *mesh) { return mesh->indices; }
@@ -147,13 +143,6 @@ int loadOBJFile(FILE *file, Mesh *mesh) {
             }
         }
     }
-#if 0
-    // sanity check
-    printf("s: v: %u, vn: %u, vt: %u, f: %u\n",
-        stats->vertices * 3, stats->normals * 3, stats->texcoords * 2, stats->indices);
-    printf("o: v: %u, vn: %u, vt: %u, f: %u\n",
-        vertexOfs, normalOfs, texOfs, indexOfs);
-#endif
     return 1;
 }
 

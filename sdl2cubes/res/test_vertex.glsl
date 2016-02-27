@@ -16,8 +16,12 @@ out vec2 vertexT;
 out vec3 vertexN;
 
 void main() {
-    vertexT = aTex;
-    vertexN = aNormal;
+    // flip texture so we don't have to do it in C.
+    vertexT = aTex * vec2(1.0, -1.0);
+    // Cutting the matrix down to mat3 removes the translation,
+    // but if the view matrix shears or otherwise mangles coordinates
+    // beyond translating, scaling and rotating this may be wrong.
+    vertexN = normalize(mat3(view) * aNormal);
     // just pass the vertices to rasterization as-is
-    gl_Position = vec4(aPos, 1.0);
+    gl_Position = projection * (view * vec4(aPos, 1.0));
 }
