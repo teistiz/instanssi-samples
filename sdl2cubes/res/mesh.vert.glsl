@@ -1,12 +1,12 @@
 #version 330
 
 layout(std140) uniform FrameParams {
-    mat4 projection;
+    mat4 projection;    // viewspace to screenspace
     float time;
 };
 
 layout(std140) uniform ObjectParams {
-    mat4 transform;
+    mat4 transform;     // object to viewspace
 };
 
 // Declare vertex format.

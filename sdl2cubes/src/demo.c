@@ -80,6 +80,7 @@ int initDemo() {
 }
 
 void updateShaderGlobals(FrameParams *gu);
+void drawScene();
 
 void queueObject(ObjectParams *params);
 void flushObjects();
@@ -114,42 +115,49 @@ int runDemo(float dt) {
 
     // ---- draw objects and stuff ----
 
+    tfsClear(g_tfsView); // reset transform stack
+    // (this would be a good spot to do camera transformations)
+
+    // move camera back (-1 is inward, but we move the camera by moving the
+    // scene)
+    tfsApply(g_tfsView, tfTranslate(0, 0, -5));
+
+    drawScene();
+
+    // show what we just drew
+    presentWindow();
+    return 1;
+}
+
+void drawScene() {
     // bind the test texture to sampler 0
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, g_texTest);
 
-    tfsClear(g_tfsView); // reset transform stack
-    // (this would be a good spot to do camera transformations)
+    float t = g_time;
 
     ObjectParams objectParams;
     for(int i = 0; i < 10; i++) {
         float p = i / 10.0f;
 
-        tfsPush(g_tfsView);
-
-        float s = 1.0 / sqrtf(2);
-        tfsApply(g_tfsView, tfRotate(-g_time * 0.5f, 0, s, s));
-        tfsApply(g_tfsView, tfScale(0.5f));
-
         float avel  = 0.2f;
-        float angle = p * M_PI * 2 + g_time * avel;
+        float angle = p * M_PI * 2 + t * avel;
 
         float x = cosf(angle) * 4.0f;
         float y = sinf(angle) * 4.0f;
+        float s = 1.0 / sqrtf(2);
 
+        tfsPush(g_tfsView);
         tfsApply(g_tfsView, tfTranslate(x, y, -10));
+        tfsApply(g_tfsView, tfScale(0.5f));
+        tfsApply(g_tfsView, tfRotate(-t * 0.5f, 0, s, s));
 
         objectParams.transform = tfsGet(g_tfsView);
         queueObject(&objectParams);
 
         tfsPop(g_tfsView);
     }
-
     flushObjects();
-
-    // show what we just drew
-    presentWindow();
-    return 1;
 }
 
 // ---- object batching ----
@@ -340,7 +348,14 @@ void tfsPush(TransformStack *tfs) {
     tfs->pos++;
 }
 
+// This applies pre-multiplication like OpenGL.
+// It's probably more logical for anyone who's used its old API.
 void tfsApply(TransformStack *tfs, Transform tf) {
+    Transform *current = &(tfs->t[tfs->pos]);
+    tfs->t[tfs->pos]   = tfMultiply(&tf, current);
+}
+
+void tfsApplyR(TransformStack *tfs, Transform tf) {
     Transform *current = &(tfs->t[tfs->pos]);
     tfs->t[tfs->pos]   = tfMultiply(current, &tf);
 }
@@ -432,5 +447,16 @@ Transform tfPerspective(float near, float far, float aspect, float fov_y) {
     m[11] = -1.0f;
     m[14] = 2.0f * (near * far) / (near - far);
     m[15] = 0.0f;
+    return tf;
+}
+
+Transform tfOrtho(float near, float far, float w, float h) {
+    Transform tf = tfIdentity();
+    float *m     = tf.m;
+
+    m[0]  = 2.0f / w;
+    m[5]  = 2.0f / h;
+    m[10] = -2.0f / (far - near);
+    m[14] = -(far + near) / (far - near);
     return tf;
 }
