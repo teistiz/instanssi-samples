@@ -26,6 +26,8 @@ ifdef SYSTEMROOT
 else
     # probably Unix-ish
     LIBS += GLEW GL SDL2 m
+    INCLUDE_PATHS += deps/include
+    LIB_PATHS += deps/lib
 endif
 
 LIBS += vorbisfile vorbis ogg

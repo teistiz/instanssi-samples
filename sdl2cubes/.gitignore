@@ -3,3 +3,5 @@ res/
 *.o
 *.d
 *.trace
+sdl2cubes
+*.exe
