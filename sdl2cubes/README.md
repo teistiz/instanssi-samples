@@ -25,11 +25,11 @@ After installing, open MSYS2's shell (`msys2_shell.bat`), sync the package datab
     pacman -Sy
     pacman --needed -S bash pacman pacman-mirrors msys2-runtime
 
-If the MSYS2 runtime is updated, restart the shell. If you want to, you can update the rest of the packages with:
+If the second command updates anything, restart the shell. If you want to, you can update the rest of the packages with:
 
     pacman -Su
 
-Then install the dependencies:
+Then install the project dependencies:
 
     pacman -S make mingw-w64-i686-SDL2 mingw-w64-i686-libvorbis mingw-w64-i686-gcc
 
