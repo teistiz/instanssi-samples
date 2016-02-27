@@ -126,22 +126,28 @@ void drawQuad() {
 }
 
 void initBuffers() {
-    // Get new buffer handle for our uniforms (shader per-draw variables).
+    // Make a buffer for shader uniform parameters.
+    // Get id for the new buffer.
     glGenBuffers(1, &g_ubGlobals);
+    // Select the new buffer as our current GL_UNIFORM_BUFFER.
+    // Technically we could bind it in any buffer slot for now, but GL
+    // implementations are allowed to optimize based on where the buffer was
+    // bound first. It's probably a good idea to initialize buffers in the slot
+    // they will be used in.
     glBindBuffer(GL_UNIFORM_BUFFER, g_ubGlobals);
     // GL_DYNAMIC_DRAW hints the buffer is for drawing with frequent updates
     // See: https://www.opengl.org/sdk/docs/man/html/glBufferData.xhtml .
     glBufferData(GL_UNIFORM_BUFFER, sizeof(MeshUniforms), NULL,
                  GL_DYNAMIC_DRAW);
 
+    // This can be used as a GL_TRIANGLE_FAN of vec2s to draw a rectangle.
     float quadVertices[] = {
         1.0f, 1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f,
     };
-
-    // make some data for a rectangle so we can render stuff
     glGenBuffers(1, &g_bufQuad);
     glBindBuffer(GL_ARRAY_BUFFER, g_bufQuad);
-    // GL_STATIC_DRAW hints this is static (e.g. mesh) data for drawing
+    // Allocate and fill the buffer with data.
+    // GL_STATIC_DRAW hints this is static (e.g. mesh) data for drawing.
     glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices,
                  GL_STATIC_DRAW);
 

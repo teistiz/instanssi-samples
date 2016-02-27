@@ -5,3 +5,5 @@ AlignAfterOpenBracket: true
 AlignConsecutiveAssignments: true
 AlignOperands: true
 SpaceBeforeParens: Never
+UseTab: Never
+

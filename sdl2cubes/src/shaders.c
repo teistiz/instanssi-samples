@@ -17,7 +17,7 @@ GLuint buildShaderStage(GLenum type, const char *src, const char *id) {
         GLint logSize = 0;
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logSize);
         if(logSize > 0) {
-            GLchar *log = malloc(logSize);
+            GLchar *log = (GLchar *)malloc(logSize);
             glGetShaderInfoLog(shader, logSize, NULL, log);
             if(id) {
                 fprintf(stderr, "Shader \"%s\" error: %s\n", id, log);
@@ -45,7 +45,7 @@ GLuint buildShaderStageFromFile(GLenum type, const char *filename) {
     fseek(file, 0, SEEK_SET);
 
     // pass file contents for compilation
-    char *buf  = malloc(len + 1);
+    char *buf  = (char *)malloc(len + 1);
     size_t got = fread(buf, 1, len, file);
     if(got == len) {
         buf[len] = '\0';
@@ -93,7 +93,7 @@ void buildShaderFromSpecs(ShaderSourceSpec *spec) {
         GLint logSize = 0;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logSize);
         if(logSize > 0) {
-            GLchar *log = malloc(logSize);
+            GLchar *log = (GLchar *)malloc(logSize);
             glGetProgramInfoLog(program, logSize, NULL, log);
             fprintf(stderr, "Shader link failed: %s\n", log);
             free(log);
@@ -149,7 +149,8 @@ void reloadShaders() {
 void addShaderSource(GLuint *idPtr, const char *vtxFile, const char *fragFile,
                      const char *geomFile,
                      void (*postCompile)(ShaderSourceSpec *)) {
-    ShaderSourceSpec *spec = malloc(sizeof(ShaderSourceSpec));
+    ShaderSourceSpec *spec =
+        (ShaderSourceSpec *)malloc(sizeof(ShaderSourceSpec));
     memset(spec, 0, sizeof(ShaderSourceSpec));
 
     spec->idPtr       = idPtr;
@@ -159,7 +160,7 @@ void addShaderSource(GLuint *idPtr, const char *vtxFile, const char *fragFile,
     spec->postCompile = postCompile;
 
     if(shaderSpecs) {
-        spec->next = (void *)shaderSpecs;
+        spec->next = shaderSpecs;
     }
     shaderSpecs = spec;
 }

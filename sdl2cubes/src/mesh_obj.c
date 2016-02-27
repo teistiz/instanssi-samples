@@ -39,7 +39,7 @@ Mesh *meshReadOBJ(const char *filename) {
     // each vertex has separate indices for position, normal and texture coord
     size_t indexBytes = 4 * 3 * stats.vertices;
 
-    Mesh *mesh  = malloc(sizeof(Mesh) + attribBytes + indexBytes);
+    Mesh *mesh  = (Mesh *)malloc(sizeof(Mesh) + attribBytes + indexBytes);
     mesh->stats = stats;
     // attribute data comes right after the Mesh struct
     mesh->attribs = (float *)((char *)mesh + sizeof(Mesh));

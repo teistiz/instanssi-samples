@@ -36,7 +36,7 @@ struct AudioReader *arInit(const char *filename) {
     if(!file) {
         return NULL;
     }
-    AudioReader *reader = malloc(sizeof(AudioReader));
+    AudioReader *reader = (AudioReader *)malloc(sizeof(AudioReader));
     memset(reader, 0, sizeof(AudioReader));
     reader->file = file;
     // close can be omitted if we handle that
