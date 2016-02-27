@@ -3,6 +3,7 @@
 
 extern float g_aspect;
 extern float g_time;
+
 extern int g_glUniformAlignment;
 extern int g_paused;
 

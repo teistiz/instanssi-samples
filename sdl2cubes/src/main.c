@@ -21,9 +21,8 @@ extern int runDemo(float dt);
 extern int initDemo();
 extern const char *WINDOW_TITLE;
 
-enum { AUDIO_SAMPLES     = 8192 };
-
 SDL_Window *g_sdlWindow = NULL;
+
 int g_windowWidth       = 1280;
 int g_windowHeight      = 720;
 int g_fullScreen        = 0;
@@ -31,14 +30,14 @@ int g_paused            = 0;
 unsigned g_mouseButtons = 0;
 float g_aspect          = 16.0f / 9.0f;
 
-SDL_AudioDeviceID g_audioDevice;
-
-Uint32 g_ticks, g_lastTicks;
-
 int g_glUniformAlignment = 0;
+Uint32 g_ticks, g_lastTicks;
 
 typedef struct AudioState { AudioReader *reader; } AudioState;
 AudioState g_audioState = {NULL};
+
+enum { AUDIO_SAMPLES = 8192 };
+SDL_AudioDeviceID g_audioDevice;
 
 void playAudio(const char *filename);
 void generateAudio(void *userdata, Uint8 *stream, int len);
@@ -183,9 +182,6 @@ int main(int argc, char *argv[]) {
 void setSoundtrack(const char *filename) {
     assert(!g_audioState.reader);
     g_audioState.reader = arInit(filename);
-    if(g_audioState.reader) {
-        SDL_PauseAudioDevice(g_audioDevice, 0);
-    }
 }
 
 void generateAudio(void *userdata, Uint8 *stream, int len) {

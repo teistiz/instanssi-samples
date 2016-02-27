@@ -77,7 +77,10 @@ int arGetChannels(AudioReader *ar) {
     return info->channels;
 }
 
-int arGetSampleBits(AudioReader *ar) { return 2; }
+int arGetSampleBits(AudioReader *ar) {
+    (void)ar; // pretend we do something with ar
+    return 2;
+}
 
 int arRead(AudioReader *ar, unsigned char *dest, int len) {
     int ofs       = 0;
