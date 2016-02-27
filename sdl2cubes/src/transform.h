@@ -17,11 +17,13 @@ typedef struct TransformStack {
     Transform t[];
 } TransformStack;
 
+
 void tfsCreate(TransformStack **p, unsigned maxSize);
 void tfsClear(TransformStack *tfs);
 Transform tfsGet(TransformStack *tfs);
 void tfsPop(TransformStack *tfs);
-void tfsPush(TransformStack *tfs, Transform tf);
+void tfsPush(TransformStack *tfs);
+void tfsApply(TransformStack *tfs, Transform tf);
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846

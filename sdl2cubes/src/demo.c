@@ -16,15 +16,17 @@ const char *WINDOW_TITLE = "cubes!?";
 
 float g_time = 0;
 
-// This can be passed to shaders as-is, as long as it matches GLSL's layout
+// These can be passed to shaders as-is, as long as they match GLSL's layout
 // rules. Basically things are aligned to their size, except that
 // vec3 aligns like vec4 and matrices align to their column size
 // (vec2/vec3/vec4). Arrays align to their elements' size (iirc).
 // See https://www.opengl.org/registry/doc/glspec45.core.pdf#page=159 .
-typedef struct MeshUniforms {
+typedef struct FrameParams {
     Transform projection;
-    Transform view;
-} MeshUniforms;
+    float time;
+} FrameParams;
+
+typedef struct ObjectParams { Transform transform; } ObjectParams;
 
 Transform g_tfProjection;
 TransformStack *g_tfsView;
@@ -37,12 +39,14 @@ typedef struct RenderMesh {
 
 GLuint g_vaQuad    = 0; // vertex array for the quad
 GLuint g_bufQuad   = 0; // data buffer for the quad
-GLuint g_ubGlobals = 0; // uniform buffer for shader params
+GLuint g_ubGlobals = 0; // uniform buffer for per-frame globals
+
+GLuint g_ubObjects = 0; // uniform buffer for per-object params
 
 GLuint g_texTest    = 0; // test texture
 GLuint g_texAtlas   = 0; // overlay graphics
 GLuint g_shaderMesh = 0; // shader for simple meshes
-RenderMesh g_meshSphere; // mesh object
+RenderMesh g_meshCube;   // mesh object
 
 void loadMesh(RenderMesh *dest, const char *filename);
 void loadTexture(GLuint *dest, const char *filename);
@@ -50,7 +54,10 @@ void loadTexture(GLuint *dest, const char *filename);
 void initBuffers();
 void drawQuad();
 
-// demo init code goes here.
+/**
+ * Demo init code goes here.
+ * Return 0 to abort.
+ */
 int initDemo() {
     setWindowTitle(WINDOW_TITLE);
     // This starts playing when init has finished.
@@ -59,7 +66,7 @@ int initDemo() {
     g_tfProjection = tfIdentity();
     tfsCreate(&g_tfsView, 64);
 
-    loadMesh(&g_meshSphere, "res/unitcube.obj");
+    loadMesh(&g_meshCube, "res/unitcube.obj");
     loadTexture(&g_texTest, "res/quality_graphics.png");
 
     addShaderSource(&g_shaderMesh, "res/mesh.vert.glsl", "res/mesh.frag.glsl",
@@ -71,6 +78,11 @@ int initDemo() {
     initBuffers();
     return 1;
 }
+
+void updateShaderGlobals(FrameParams *gu);
+
+void queueObject(ObjectParams *params);
+void flushObjects();
 
 /**
  * Demo script and rendering goes here.
@@ -94,40 +106,115 @@ int runDemo(float dt) {
     glUseProgram(g_shaderMesh);
 
     // ---- pass per-frame globals ----
-    tfsClear(g_tfsView); // reset transform stack
-    float s = 1.0 / sqrtf(2);
-    tfsPush(g_tfsView, tfRotate(g_time * 0.5f, 0, s, s));
-    tfsPush(g_tfsView, tfScale(0.5f));
 
-    MeshUniforms uf;
-    uf.projection = tfScale3(1 / g_aspect, 1, 1);
-    uf.view       = tfsGet(g_tfsView);
+    FrameParams fp;
+    fp.projection = tfPerspective(0.1f, 5000.0f, g_aspect, M_PI * 0.3f);
+    fp.time = g_time;
+    updateShaderGlobals(&fp);
 
-    // select our uniform buffer again
-    glBindBuffer(GL_UNIFORM_BUFFER, g_ubGlobals);
-    // upload new data
-    // if this is still slow on AMD, make more buffers and cycle between them
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(MeshUniforms), &uf);
-    // set uniform binding #0 to point at the buffer
-    glBindBufferRange(GL_UNIFORM_BUFFER, 0, g_ubGlobals, 0,
-                      sizeof(MeshUniforms));
+    // ---- draw objects and stuff ----
 
     // bind the test texture to sampler 0
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, g_texTest);
 
-    // this restores the vertex array bindings we made earlier
-    glBindVertexArray(g_meshSphere.vertexArray);
-    glDrawArrays(GL_TRIANGLES, 0, g_meshSphere.vertices);
+    tfsClear(g_tfsView); // reset transform stack
+    // (this would be a good spot to do camera transformations)
+
+    ObjectParams objectParams;
+    for(int i = 0; i < 10; i++) {
+        float p = i / 10.0f;
+
+        tfsPush(g_tfsView);
+
+        float s = 1.0 / sqrtf(2);
+        tfsApply(g_tfsView, tfRotate(-g_time * 0.5f, 0, s, s));
+        tfsApply(g_tfsView, tfScale(0.5f));
+
+        float avel  = 0.2f;
+        float angle = p * M_PI * 2 + g_time * avel;
+
+        float x = cosf(angle) * 4.0f;
+        float y = sinf(angle) * 4.0f;
+
+        tfsApply(g_tfsView, tfTranslate(x, y, -10));
+
+        objectParams.transform = tfsGet(g_tfsView);
+        queueObject(&objectParams);
+
+        tfsPop(g_tfsView);
+    }
+
+    flushObjects();
 
     // show what we just drew
     presentWindow();
     return 1;
 }
 
+// ---- object batching ----
+
+enum { OBJECT_QUEUE_SIZE   = 16 };
+unsigned char *objectQueue = NULL;
+unsigned objectQueuePos    = 0;
+unsigned objectStride      = 0; // see initBuffers()
+
+unsigned getObjectQueueOffset(int pos) { return objectStride * pos; }
+
+unsigned padToAlign(unsigned size, unsigned align) {
+    return size + (align - (size % align)) % align;
+}
+
+// Pads sizes to match GL uniform offset alignment requirements.
+unsigned getUniformStride(unsigned size) {
+    return padToAlign(size, g_glUniformAlignment);
+}
+
+void queueObject(ObjectParams *params) {
+    if(objectQueuePos == OBJECT_QUEUE_SIZE) {
+        flushObjects();
+    }
+    unsigned offset    = getObjectQueueOffset(objectQueuePos);
+    ObjectParams *dest = (ObjectParams *)(objectQueue + offset);
+    memcpy(dest, params, sizeof(ObjectParams));
+    objectQueuePos++;
+}
+
+void flushObjects() {
+    if(objectQueuePos == 0) {
+        return;
+    }
+    glBindVertexArray(g_meshCube.vertexArray);
+    glBindBuffer(GL_UNIFORM_BUFFER, g_ubObjects);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, objectStride * objectQueuePos,
+                    objectQueue);
+
+    for(unsigned i = 0; i < objectQueuePos; i++) {
+        unsigned offset = objectStride * i;
+        glBindBufferRange(GL_UNIFORM_BUFFER, 1, g_ubObjects, offset,
+                          objectStride);
+        glDrawArrays(GL_TRIANGLES, 0, g_meshCube.vertices);
+    }
+    objectQueuePos = 0;
+}
+
+// ---- random utilities and initialization ----
+
 void drawQuad() {
     glBindVertexArray(g_vaQuad);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+}
+
+void updateShaderGlobals(FrameParams *fp) {
+    glBindBuffer(GL_UNIFORM_BUFFER, g_ubGlobals);
+    // Write the struct into target buffer.
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(FrameParams), fp);
+    // Bind uniform buffer slot #0 to g_ubGlobals from offset 0, length
+    // sizeof(FrameParams).
+    // Note that the offset has to be a multiple of
+    // GL_UNIFORM_OFFSET_ALIGNMENT.
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, g_ubGlobals, 0,
+                      sizeof(FrameParams));
 }
 
 void initBuffers() {
@@ -140,9 +227,17 @@ void initBuffers() {
     // bound first. It's probably a good idea to initialize buffers in the slot
     // they will be used in.
     glBindBuffer(GL_UNIFORM_BUFFER, g_ubGlobals);
-    // GL_DYNAMIC_DRAW hints the buffer is for drawing with frequent updates
+    // GL_DYNAMIC_DRAW hints the buffer is for drawing with frequent updates.
     // See: https://www.opengl.org/sdk/docs/man/html/glBufferData.xhtml .
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(MeshUniforms), NULL,
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(FrameParams), NULL,
+                 GL_DYNAMIC_DRAW);
+
+    glGenBuffers(1, &g_ubObjects);
+    objectStride = getUniformStride(sizeof(ObjectParams));
+    printf("object stride: %u B\n", objectStride);
+    objectQueue = malloc(objectStride * OBJECT_QUEUE_SIZE);
+    glBindBuffer(GL_UNIFORM_BUFFER, g_ubObjects);
+    glBufferData(GL_UNIFORM_BUFFER, objectStride * OBJECT_QUEUE_SIZE, NULL,
                  GL_DYNAMIC_DRAW);
 
     // This can be used as a GL_TRIANGLE_FAN of vec2s to draw a rectangle.
@@ -240,11 +335,15 @@ void tfsPop(TransformStack *tfs) {
     tfs->pos--;
 }
 
-void tfsPush(TransformStack *tfs, Transform tf) {
+void tfsPush(TransformStack *tfs) {
     assert(tfs->pos < tfs->size - 1);
-    Transform *prev = &(tfs->t[tfs->pos]);
+    memcpy(tfs->t + tfs->pos + 1, tfs->t + tfs->pos, sizeof(Transform));
     tfs->pos++;
-    tfs->t[tfs->pos] = tfMultiply(prev, &tf);
+}
+
+void tfsApply(TransformStack *tfs, Transform tf) {
+    Transform *current = &(tfs->t[tfs->pos]);
+    tfs->t[tfs->pos]   = tfMultiply(current, &tf);
 }
 
 Transform tfIdentity() {

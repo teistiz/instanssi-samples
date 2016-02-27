@@ -47,17 +47,14 @@ void presentWindow();
 void handleWindowResize(int width, int height);
 
 #ifdef _WIN32
-void __attribute__((__stdcall__)) debugCallback(
-    GLenum source, GLenum type, GLuint id, GLenum severity,
-    GLsizei length, const GLchar *message, const GLvoid *data)
-{
+void __attribute__((__stdcall__))
+debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
+              GLsizei length, const GLchar *message, const GLvoid *data) {
     printf("%s\n", message);
 }
 #else
-void debugCallback(
-    GLenum source, GLenum type, GLuint id, GLenum severity,
-    GLsizei length, const GLchar *message, GLvoid *data)
-{
+void debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
+                   GLsizei length, const GLchar *message, GLvoid *data) {
     printf("%s\n", message);
 }
 #endif
@@ -79,9 +76,9 @@ int main(int argc, char *argv[]) {
     if(g_fullScreen) {
         flags |= SDL_WINDOW_FULLSCREEN;
     }
-    g_sdlWindow = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED,
-                                   SDL_WINDOWPOS_UNDEFINED, g_windowWidth,
-                                   g_windowHeight, flags);
+    g_sdlWindow =
+        SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                         g_windowWidth, g_windowHeight, flags);
 
     if(!g_sdlWindow) {
         fprintf(stderr, "CreateWindow failed! Is the resolution supported?\n");
@@ -111,15 +108,15 @@ int main(int argc, char *argv[]) {
         glEnable(GL_DEBUG_OUTPUT);
         glDebugMessageCallback(&debugCallback, NULL);
         // disable all messages
-        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE,
-            GL_DONT_CARE, 0, NULL, GL_FALSE);
+        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0,
+                              NULL, GL_FALSE);
         // enable some critical messages
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE,
-            GL_DEBUG_SEVERITY_HIGH, 0, NULL, GL_TRUE);
+                              GL_DEBUG_SEVERITY_HIGH, 0, NULL, GL_TRUE);
         glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR,
-            GL_DEBUG_SEVERITY_HIGH, 0, NULL, GL_TRUE);
+                              GL_DEBUG_SEVERITY_HIGH, 0, NULL, GL_TRUE);
         glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR,
-            GL_DEBUG_SEVERITY_HIGH, 0, NULL, GL_TRUE);
+                              GL_DEBUG_SEVERITY_HIGH, 0, NULL, GL_TRUE);
     }
 
     if(!initDemo()) {

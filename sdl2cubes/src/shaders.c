@@ -118,6 +118,7 @@ exit:
 void bindUniformBlock(int program, int slot, const char *name) {
     GLuint index = glGetUniformBlockIndex(program, name);
     if(index == GL_INVALID_INDEX) {
+        // printf("warning: no uniform block %s in shader program!\n", name);
         return;
     }
     glUniformBlockBinding(program, index, slot);
@@ -135,7 +136,8 @@ void reloadShaders() {
         }
         buildShaderFromSpecs(spec);
         if(*spec->idPtr) { // did we get a nonzero shader id?
-            bindUniformBlock(*spec->idPtr, 0, "ShaderGlobals");
+            bindUniformBlock(*spec->idPtr, 0, "FrameParams");
+            bindUniformBlock(*spec->idPtr, 1, "ObjectParams");
             // If the shader has a post-compile handler
             // (e.g. for extra bindings), give it a poke now.
             if(spec->postCompile) {

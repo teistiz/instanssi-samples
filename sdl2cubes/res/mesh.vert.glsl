@@ -1,8 +1,12 @@
 #version 330
 
-layout(std140) uniform MeshUniforms {
+layout(std140) uniform FrameParams {
     mat4 projection;
-    mat4 view;
+    float time;
+};
+
+layout(std140) uniform ObjectParams {
+    mat4 transform;
 };
 
 // Declare vertex format.
@@ -21,7 +25,8 @@ void main() {
     // Cutting the matrix down to mat3 removes the translation,
     // but if the view matrix shears or otherwise mangles coordinates
     // beyond translating, scaling and rotating this may be wrong.
-    vertexN = normalize(mat3(view) * aNormal);
+    vertexN = normalize(mat3(transform) * aNormal);
     // just pass the vertices to rasterization as-is
-    gl_Position = projection * (view * vec4(aPos, 1.0));
+    //gl_Position = projection * vec4(aPos, 1.0);
+    gl_Position = projection * (transform * vec4(aPos, 1.0));
 }
