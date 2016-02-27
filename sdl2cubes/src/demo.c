@@ -154,7 +154,7 @@ int runDemo(float dt) {
 
 // ---- object batching ----
 
-enum { OBJECT_QUEUE_SIZE   = 16 };
+enum { OBJECT_QUEUE_SIZE   = 64 };
 unsigned char *objectQueue = NULL;
 unsigned objectQueuePos    = 0;
 unsigned objectStride      = 0; // see initBuffers()
@@ -234,7 +234,6 @@ void initBuffers() {
 
     glGenBuffers(1, &g_ubObjects);
     objectStride = getUniformStride(sizeof(ObjectParams));
-    printf("object stride: %u B\n", objectStride);
     objectQueue = malloc(objectStride * OBJECT_QUEUE_SIZE);
     glBindBuffer(GL_UNIFORM_BUFFER, g_ubObjects);
     glBufferData(GL_UNIFORM_BUFFER, objectStride * OBJECT_QUEUE_SIZE, NULL,

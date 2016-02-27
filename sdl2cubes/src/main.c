@@ -46,18 +46,18 @@ void generateAudio(void *userdata, Uint8 *stream, int len);
 void presentWindow();
 void handleWindowResize(int width, int height);
 
-#ifdef _WIN32
-void __attribute__((__stdcall__))
-debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
-              GLsizei length, const GLchar *message, const GLvoid *data) {
-    printf("%s\n", message);
-}
+#if defined(__GNUC__)
+#define UNUSED(x) x __attribute__((unused))
 #else
-void debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
-                   GLsizei length, const GLchar *message, GLvoid *data) {
+#define UNUSED(x) x
+#endif
+
+void __attribute__((__stdcall__))
+debugCallback(GLenum UNUSED(source), GLenum UNUSED(type), GLuint UNUSED(id),
+              GLenum UNUSED(severity), GLsizei UNUSED(length),
+              const GLchar *message, const GLvoid UNUSED(*data)) {
     printf("%s\n", message);
 }
-#endif
 
 int main(int argc, char *argv[]) {
     SDL_Event event;
