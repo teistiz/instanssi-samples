@@ -52,7 +52,10 @@ void handleWindowResize(int width, int height);
 #define UNUSED(x) x
 #endif
 
-void __attribute__((__stdcall__))
+void
+#ifdef WINDOWS
+__attribute__((__stdcall__))
+#endif
 debugCallback(GLenum UNUSED(source), GLenum UNUSED(type), GLuint UNUSED(id),
               GLenum UNUSED(severity), GLsizei UNUSED(length),
               const GLchar *message, const GLvoid UNUSED(*data)) {

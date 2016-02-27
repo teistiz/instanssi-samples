@@ -17,7 +17,7 @@ ifdef SYSTEMROOT
     OUT := $(OUT).exe
     CC := $(CC).exe
 
-    CFLAGS += -static
+    CFLAGS += -static -DWINDOWS
     LDFLAGS += -static
 
     LIBS += mingw32 SDL2main SDL2.dll glew32s opengl32
