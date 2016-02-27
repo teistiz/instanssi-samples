@@ -1,0 +1,7 @@
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 79
+AlignAfterOpenBracket: true
+AlignConsecutiveAssignments: true
+AlignOperands: true
+SpaceBeforeParens: Never
