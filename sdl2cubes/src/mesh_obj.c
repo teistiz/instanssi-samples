@@ -201,7 +201,7 @@ void meshPackVertices(Mesh *mesh, float *buffer) {
 }
 
 int countFaceVertices(const char *line) {
-    int a, *f = &a;
+    unsigned a, *f = &a;
     int res   = sscanf(line, FACE_PATTERN, f, f, f, f, f, f, f, f, f, f, f, f);
     return res / 3;
 }
