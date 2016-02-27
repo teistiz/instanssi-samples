@@ -6,14 +6,14 @@
 typedef struct ShaderSourceSpec ShaderSourceSpec;
 
 typedef struct ShaderSourceSpec {
-    GLuint *idPtr;          // address of (global?) id to overwrite
+    GLuint *idPtr; // address of (global?) id to overwrite
     const char *vtxFile;
     const char *fragFile;
     const char *geomFile;
     time_t vtxTime;
     time_t fragTime;
     time_t geomTime;
-    void (*postCompile)(ShaderSourceSpec*);
+    void (*postCompile)(ShaderSourceSpec *);
     ShaderSourceSpec *next;
 } ShaderSourceSpec;
 
@@ -23,6 +23,6 @@ void buildShaderFromSpecs(ShaderSourceSpec *spec);
 void reloadShaders();
 void addShaderSource(GLuint *idPtr, const char *vertexFile,
                      const char *fragmentFile, const char *geometryFile,
-                     void (*postCompile)(ShaderSourceSpec*));
+                     void (*postCompile)(ShaderSourceSpec *));
 
 #endif

@@ -4,14 +4,14 @@
 #define GLEW_STATIC
 #include <GL/glew.h>
 
-
 unsigned loadImageToTexture(const char *filename) {
     GLuint tex = 0;
     GLenum format, internalFormat;
     int width = 0, height = 0, components = 0;
 
     // This can load many image formats, including PNG and JPEG.
-    unsigned char *image = stbi_load(filename, &width, &height, &components, 0);
+    unsigned char *image =
+        stbi_load(filename, &width, &height, &components, 0);
 
     if(!image) {
         fprintf(stderr, "error: can't open image: %s\n", filename);
@@ -36,8 +36,8 @@ unsigned loadImageToTexture(const char *filename) {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
     // allocate and initialize the texture with our image data
-    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height,
-                 0, format, GL_UNSIGNED_BYTE, image);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format,
+                 GL_UNSIGNED_BYTE, image);
 
     // GL_TEXTURE_MIN_FILTER is set to use mipmaps by default.
     // Unless they're provided or generated, the texture is incomplete

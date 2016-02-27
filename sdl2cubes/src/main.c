@@ -1,6 +1,6 @@
 /**
  * main.c
- * More cubes! This time in C11.
+ * More cubes! This time in C11 with  SDL2 and OpenGL 3.3 Core.
  * License: WTFPL
  */
 
@@ -27,15 +27,15 @@ typedef struct RenderMesh {
 } RenderMesh;
 
 const char *WINDOW_TITLE = "ebin_cubes";
-enum { AUDIO_SAMPLES = 8192 };
+enum { AUDIO_SAMPLES     = 8192 };
 
 SDL_Window *g_sdlWindow = NULL;
-int g_windowWidth = 1280;
-int g_windowHeight = 720;
-int g_fullScreen = 0;
-int g_paused = 0;
+int g_windowWidth       = 1280;
+int g_windowHeight      = 720;
+int g_fullScreen        = 0;
+int g_paused            = 0;
 unsigned g_mouseButtons = 0;
-float g_aspect = 16.0f/9.0f;
+float g_aspect          = 16.0f / 9.0f;
 
 SDL_AudioDeviceID g_audioDevice;
 
@@ -43,11 +43,11 @@ Uint32 g_ticks, g_lastTicks;
 float g_time = 0;
 
 GLuint g_shaderBlobs = 0;
-GLuint g_texFace = 0;
-GLuint g_texAtlas = 0;
+GLuint g_texFace     = 0;
+GLuint g_texAtlas    = 0;
 
 GLuint g_bufQuad = 0;
-GLuint g_vaQuad = 0;
+GLuint g_vaQuad  = 0;
 
 GLint g_glUniformAlignment = 0;
 
@@ -72,15 +72,13 @@ GLuint g_ubGlobals = 0;
 int initDemo();
 int runDemo(float dt);
 
-typedef struct AudioState {
-    AudioReader *reader;
-} AudioState;
+typedef struct AudioState { AudioReader *reader; } AudioState;
 
 AudioState g_audioState;
 void generateAudio(void *userdata, Uint8 *stream, int len);
 
 void handleWindowResize(int width, int height) {
-    g_windowWidth = width;
+    g_windowWidth  = width;
     g_windowHeight = height;
     g_aspect = (float)width / height;
     glViewport(0, 0, width, height);
@@ -90,7 +88,7 @@ int main(int argc, char *argv[]) {
     SDL_Event event;
     int running = 1;
 
-    for(int i=0; i<argc; i++) {
+    for(int i = 0; i < argc; i++) {
         if(strcmp(argv[i], "--fullscreen") == 0) {
             g_fullScreen = 1;
         }
@@ -103,9 +101,9 @@ int main(int argc, char *argv[]) {
     if(g_fullScreen) {
         flags |= SDL_WINDOW_FULLSCREEN;
     }
-    g_sdlWindow = SDL_CreateWindow(
-        WINDOW_TITLE, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-        g_windowWidth, g_windowHeight, flags);
+    g_sdlWindow = SDL_CreateWindow(WINDOW_TITLE, SDL_WINDOWPOS_UNDEFINED,
+                                   SDL_WINDOWPOS_UNDEFINED, g_windowWidth,
+                                   g_windowHeight, flags);
 
     if(!g_sdlWindow) {
         fprintf(stderr, "CreateWindow failed! Is the resolution supported?\n");
@@ -138,77 +136,76 @@ int main(int argc, char *argv[]) {
     if(g_audioState.reader) {
         // https://wiki.libsdl.org/CategoryAudio
         SDL_AudioSpec requested, got;
-        requested.freq = arGetRate(g_audioState.reader);
+        requested.freq     = arGetRate(g_audioState.reader);
         requested.channels = arGetChannels(g_audioState.reader);
-        requested.format = AUDIO_S16;
-        requested.samples = AUDIO_SAMPLES;
+        requested.format   = AUDIO_S16;
+        requested.samples  = AUDIO_SAMPLES;
         requested.callback = generateAudio;
         requested.userdata = &g_audioState;
-        g_audioDevice = SDL_OpenAudioDevice(NULL, 0, &requested, &got, 0);
+        g_audioDevice      = SDL_OpenAudioDevice(NULL, 0, &requested, &got, 0);
 
         // start playing sound
         SDL_PauseAudioDevice(g_audioDevice, 0);
     }
-    g_lastTicks = SDL_GetTicks();
+    g_lastTicks           = SDL_GetTicks();
     unsigned frameCounter = 0;
     while(running) {
         // https://wiki.libsdl.org/CategoryEvents
         while(SDL_PollEvent(&event)) {
             switch(event.type) {
-                case SDL_WINDOWEVENT: {
-                    SDL_WindowEvent ev = event.window;
-                    if(ev.event == SDL_WINDOWEVENT_RESIZED) {
-                        handleWindowResize(ev.data1, ev.data2);
-                    }
-                    break;
+            case SDL_WINDOWEVENT: {
+                SDL_WindowEvent ev = event.window;
+                if(ev.event == SDL_WINDOWEVENT_RESIZED) {
+                    handleWindowResize(ev.data1, ev.data2);
                 }
-                case SDL_KEYDOWN: {
-                    if(event.key.keysym.sym == SDLK_ESCAPE) {
-                        running = 0;
-                    } else if(event.key.keysym.sym == SDLK_F5) {
-                        reloadShaders();
-                    } else if(event.key.keysym.sym == SDLK_p) {
-                        g_paused = !g_paused;
-                    }
-                    break;
-                }
-                case SDL_MOUSEMOTION: {
-                    // SDL_MouseMotionEvent ev = event.motion;
-                    // relative mouse input is ev.xrel and ev.yrel
-                    break;
-                }
-                case SDL_MOUSEWHEEL: {
-                    // SDL_MouseWheelEvent ev = event.wheel;
-                    // wheel motion is ev.y
-                    break;
-                }
-                case SDL_MOUSEBUTTONUP:
-                case SDL_MOUSEBUTTONDOWN: {
-                    SDL_MouseButtonEvent ev = event.button;
-                    unsigned mask = 0;
-                    mask |= (ev.button == SDL_BUTTON_LEFT) ? 1 : 0;
-                    mask |= (ev.button == SDL_BUTTON_RIGHT) ? 2 : 0;
-                    if(ev.state == SDL_PRESSED) {
-                        g_mouseButtons |= mask;
-                    } else {
-                        g_mouseButtons &= ~mask;
-                    }
-                    // if either one of the interesting buttons is down, grab mouse
-                    SDL_SetRelativeMouseMode(
-                        g_mouseButtons & 3 ? SDL_TRUE : SDL_FALSE);
-                    break;
-                }
-                case SDL_QUIT: {
+                break;
+            }
+            case SDL_KEYDOWN: {
+                if(event.key.keysym.sym == SDLK_ESCAPE) {
                     running = 0;
-                    break;
+                } else if(event.key.keysym.sym == SDLK_F5) {
+                    reloadShaders();
+                } else if(event.key.keysym.sym == SDLK_p) {
+                    g_paused = !g_paused;
                 }
-                default:
-                    ; // not interesting enough.
+                break;
+            }
+            case SDL_MOUSEMOTION: {
+                // SDL_MouseMotionEvent ev = event.motion;
+                // relative mouse input is ev.xrel and ev.yrel
+                break;
+            }
+            case SDL_MOUSEWHEEL: {
+                // SDL_MouseWheelEvent ev = event.wheel;
+                // wheel motion is ev.y
+                break;
+            }
+            case SDL_MOUSEBUTTONUP:
+            case SDL_MOUSEBUTTONDOWN: {
+                SDL_MouseButtonEvent ev = event.button;
+                unsigned mask = 0;
+                mask |= (ev.button == SDL_BUTTON_LEFT) ? 1 : 0;
+                mask |= (ev.button == SDL_BUTTON_RIGHT) ? 2 : 0;
+                if(ev.state == SDL_PRESSED) {
+                    g_mouseButtons |= mask;
+                } else {
+                    g_mouseButtons &= ~mask;
+                }
+                // if either one of the interesting buttons is down, grab mouse
+                SDL_SetRelativeMouseMode(g_mouseButtons & 3 ? SDL_TRUE
+                                                            : SDL_FALSE);
+                break;
+            }
+            case SDL_QUIT: {
+                running = 0;
+                break;
+            }
+            default:; // not interesting enough.
             }
         }
 
-        g_ticks = SDL_GetTicks();
-        float dt = (g_ticks - g_lastTicks) * 0.001f;
+        g_ticks     = SDL_GetTicks();
+        float dt    = (g_ticks - g_lastTicks) * 0.001f;
         g_lastTicks = g_ticks;
 
         // run demo, check if we're done yet
@@ -223,8 +220,8 @@ int main(int argc, char *argv[]) {
 }
 
 void generateAudio(void *userdata, Uint8 *stream, int len) {
-    AudioState *state = (AudioState*)userdata;
-    int ofs = arRead(state->reader, stream, len);
+    AudioState *state = (AudioState *)userdata;
+    int ofs           = arRead(state->reader, stream, len);
     // set any remaining buffer to 0
     if(len - ofs) {
         memset(stream + ofs, 0, len - ofs);
@@ -235,14 +232,14 @@ void initBuffers();
 
 // demo init code goes here.
 int initDemo() {
-    addShaderSource(&g_shaderBlobs,
-        "res/test_vertex.glsl", "res/test_fragment.glsl", NULL, NULL);
+    addShaderSource(&g_shaderBlobs, "res/test_vertex.glsl",
+                    "res/test_fragment.glsl", NULL, NULL);
 
     addMeshSource(&g_meshSphere, "res/unitcube.obj");
 
     reloadShaders();
     initBuffers();
-    g_texFace = loadImageToTexture("res/quality_graphics.png");
+    g_texFace           = loadImageToTexture("res/quality_graphics.png");
     g_audioState.reader = arInit("res/test.ogg");
     glUseProgram(g_shaderBlobs);
     return 1;
@@ -263,10 +260,7 @@ void initBuffers() {
                  GL_DYNAMIC_DRAW);
 
     float quadVertices[] = {
-        1.0f, 1.0f,
-        -1.0f, 1.0f,
-        -1.0f, -1.0f,
-        1.0f, -1.0f,
+        1.0f, 1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f,
     };
 
     // make some data for a rectangle so we can render stuff
@@ -342,7 +336,7 @@ RenderMesh loadMeshToArray(const char *filename) {
         return renderMesh;
     }
     renderMesh.vertices = meshGetNumVertices(meshObj);
-    unsigned stride = sizeof(float) * (3+2+3);
+    unsigned stride     = sizeof(float) * (3 + 2 + 3);
 
     glGenBuffers(1, &renderMesh.buffer);
     glBindBuffer(GL_ARRAY_BUFFER, renderMesh.buffer);
@@ -350,7 +344,7 @@ RenderMesh loadMeshToArray(const char *filename) {
                  GL_STATIC_DRAW);
 
     void *ptr = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-    meshPackVertices(meshObj, (float*)ptr);
+    meshPackVertices(meshObj, (float *)ptr);
     glUnmapBuffer(GL_ARRAY_BUFFER);
 
     glGenVertexArrays(1, &renderMesh.vertexArray);
@@ -361,11 +355,11 @@ RenderMesh loadMeshToArray(const char *filename) {
     // Bind vertex inputs for vertex positions, texture coords and normals.
     // The offsets (last argument) are set relative to the ARRAY_BUFFER
     // bound when glVertexAttribPointer is called.
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *)0);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride,
-                          (void*)(sizeof(float) * 3));
+                          (void *)(sizeof(float) * 3));
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride,
-                          (void*)(sizeof(float) * (3 + 2)));
+                          (void *)(sizeof(float) * (3 + 2)));
 
     glBindVertexArray(0);
     return renderMesh;

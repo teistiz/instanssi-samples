@@ -3,14 +3,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int matchFaceDecl(const char *line);
+static int countFaceVertices(const char *line);
 static int startsWith(const char *str, const char *token);
 static int tallyOBJFile(FILE *file, MeshStats *stats);
 static int loadOBJFile(FILE *file, Mesh *mesh);
 
-static float* meshGetVertexPtr(Mesh *mesh);
-static float* meshGetNormalPtr(Mesh *mesh);
-static float* meshGetTexPtr(Mesh *mesh);
+static float *meshGetVertexPtr(Mesh *mesh);
+static float *meshGetNormalPtr(Mesh *mesh);
+static float *meshGetTexPtr(Mesh *mesh);
 static unsigned *meshGetIndexPtr(Mesh *mesh);
 
 // This is a scanf pattern for recognizing faces.
@@ -19,7 +19,7 @@ const char FACE_PATTERN[] = "f %u/%u/%u %u/%u/%u %u/%u/%u %u/%u/%u";
 
 // Reads an .obj mesh from a file.
 // Makes exactly one allocation.
-Mesh* meshReadOBJ(const char *filename) {
+Mesh *meshReadOBJ(const char *filename) {
     FILE *file = fopen(filename, "rb");
     MeshStats stats;
     if(!file) {
@@ -38,16 +38,17 @@ Mesh* meshReadOBJ(const char *filename) {
 #endif
     // allocate storage for all of these
     // attribs will be float32, indices will be int32
-    size_t attribBytes = 4 * (
-        stats.vertices * 3 + stats.normals * 3 + stats.texcoords * 2);
-    size_t indexBytes = 4 * stats.indices;
+    size_t attribBytes =
+        4 * (stats.positions * 3 + stats.normals * 3 + stats.texcoords * 2);
+    // each vertex has separate indices for position, normal and texture coord
+    size_t indexBytes = 4 * 3 * stats.vertices;
 
-    Mesh *mesh = malloc(sizeof(Mesh) + attribBytes + indexBytes);
+    Mesh *mesh  = malloc(sizeof(Mesh) + attribBytes + indexBytes);
     mesh->stats = stats;
     // attribute data comes right after the Mesh struct
-    mesh->attribs = (float*)((char*)mesh + sizeof(Mesh));
+    mesh->attribs = (float *)((char *)mesh + sizeof(Mesh));
     // indices after the attribute data
-    mesh->indices = (unsigned*)((char*)mesh->attribs + attribBytes);
+    mesh->indices = (unsigned *)((char *)mesh->attribs + attribBytes);
 
     if(!loadOBJFile(file, mesh)) {
         fprintf(stderr, "error: unable to parse OBJ file %s\n", filename);
@@ -59,38 +60,48 @@ Mesh* meshReadOBJ(const char *filename) {
     return mesh;
 }
 
-unsigned meshGetNumVertices(Mesh *mesh) {
-    return mesh->stats.triangles * 3;
-}
+unsigned meshGetNumVertices(Mesh *mesh) { return mesh->stats.vertices; }
 unsigned meshGetNumFloats(Mesh *mesh) {
     // each triangle is 3 vertices (vec3 pos, vec2 tex, vec3 normal)
     return meshGetNumVertices(mesh) * (3 + 2 + 3);
 }
-unsigned* meshGetIndexPtr(Mesh *mesh) { return mesh->indices; }
-float* meshGetVertexPtr(Mesh *mesh) { return mesh->attribs; }
-float* meshGetTexPtr(Mesh *mesh) {
-    return meshGetVertexPtr(mesh) + 3 * mesh->stats.vertices;
+unsigned *meshGetIndexPtr(Mesh *mesh) { return mesh->indices; }
+float *meshGetVertexPtr(Mesh *mesh) { return mesh->attribs; }
+float *meshGetTexPtr(Mesh *mesh) {
+    return meshGetVertexPtr(mesh) + 3 * mesh->stats.positions;
 }
-float* meshGetNormalPtr(Mesh *mesh) {
+float *meshGetNormalPtr(Mesh *mesh) {
     return meshGetTexPtr(mesh) + 2 * mesh->stats.texcoords;
 }
 
+unsigned emitTriangle(unsigned *pIndices, int v0, int t0, int n0, int v1,
+                      int t1, int n1, int v2, int t2, int n2) {
+    *(pIndices++) = v0 - 1;
+    *(pIndices++) = t0 - 1;
+    *(pIndices++) = n0 - 1;
+    *(pIndices++) = v1 - 1;
+    *(pIndices++) = t1 - 1;
+    *(pIndices++) = n1 - 1;
+    *(pIndices++) = v2 - 1;
+    *(pIndices++) = t2 - 1;
+    *(pIndices++) = n2 - 1;
+    return 9;
+}
 
 int loadOBJFile(FILE *file, Mesh *mesh) {
     // Just collect all the attribs and indices.
     // Converting OBJ indexing into GL-compatible stuff can follow when we
     // are packing attributes into a buffer.
-    //const MeshStats *stats = &mesh->stats;
     char *res = NULL;
     float x, y, z;
-    unsigned indexOfs = 0;
+    unsigned indexOfs  = 0;
     unsigned vertexOfs = 0;
-    unsigned texOfs = 0;
+    unsigned texOfs    = 0;
     unsigned normalOfs = 0;
 
-    float *pVertices = meshGetVertexPtr(mesh);
-    float *pTexCoords = meshGetTexPtr(mesh);
-    float *pNormals = meshGetNormalPtr(mesh);
+    float *pVertices   = meshGetVertexPtr(mesh);
+    float *pTexCoords  = meshGetTexPtr(mesh);
+    float *pNormals    = meshGetNormalPtr(mesh);
     unsigned *pIndices = meshGetIndexPtr(mesh);
 
     char line[256];
@@ -117,22 +128,20 @@ int loadOBJFile(FILE *file, Mesh *mesh) {
             pTexCoords[texOfs++] = y;
         } else if(startsWith(line, "f ")) {
             // the indices start from 1, so let's fix that here
-            unsigned v0, v1, v2;
-            unsigned n0, n1, n2;
-            unsigned t0, t1, t2;
-            unsigned tmp;
-            int count = sscanf(line, FACE_PATTERN, &v0, &t0, &n0,
-                               &v1, &t1, &n1, &v2, &t2, &n2, &tmp, &tmp, &tmp);
+            unsigned v0, v1, v2, v3;
+            unsigned n0, n1, n2, n3;
+            unsigned t0, t1, t2, t3;
+            int count = sscanf(line, FACE_PATTERN, &v0, &t0, &n0, &v1, &t1,
+                               &n1, &v2, &t2, &n2, &v3, &t3, &n3);
             if(count == 9) {
-                pIndices[indexOfs++] = v0 - 1;
-                pIndices[indexOfs++] = t0 - 1;
-                pIndices[indexOfs++] = n0 - 1;
-                pIndices[indexOfs++] = v1 - 1;
-                pIndices[indexOfs++] = t1 - 1;
-                pIndices[indexOfs++] = n1 - 1;
-                pIndices[indexOfs++] = v2 - 1;
-                pIndices[indexOfs++] = t2 - 1;
-                pIndices[indexOfs++] = n2 - 1;
+                indexOfs += emitTriangle(pIndices + indexOfs, v0, t0, n0, v1,
+                                         t1, n1, v2, t2, n2);
+            } else if(count == 12) {
+                // split quad into two triangles
+                indexOfs += emitTriangle(pIndices + indexOfs, v0, t0, n0, v1,
+                                         t1, n1, v2, t2, n2);
+                indexOfs += emitTriangle(pIndices + indexOfs, v0, t0, n0, v2,
+                                         t2, n2, v3, t3, n3);
             } else {
                 return 0;
             }
@@ -152,42 +161,43 @@ void meshOutput(Mesh *mesh, FILE *file) {
     MeshStats *stats = &mesh->stats;
 
     unsigned *pIndices = meshGetIndexPtr(mesh);
-    float *pVertices = meshGetVertexPtr(mesh);
-    float *pTexCoords = meshGetTexPtr(mesh);
-    float *pNormals = meshGetNormalPtr(mesh);
+    float *pVertices   = meshGetVertexPtr(mesh);
+    float *pTexCoords  = meshGetTexPtr(mesh);
+    float *pNormals    = meshGetNormalPtr(mesh);
 
-    for(unsigned i=0; i<stats->vertices; i++) {
-        fprintf(file, "v %f %f %f\n",
-                pVertices[i*3], pVertices[i*3+1], pVertices[i*3+2]);
+    for(unsigned i = 0; i < stats->positions; i++) {
+        fprintf(file, "v %f %f %f\n", pVertices[i * 3], pVertices[i * 3 + 1],
+                pVertices[i * 3 + 2]);
     }
-    for(unsigned i=0; i<stats->texcoords; i++) {
-        fprintf(file, "vt %f %f\n", pTexCoords[i*2], pTexCoords[i*2+1]);
+    for(unsigned i = 0; i < stats->texcoords; i++) {
+        fprintf(file, "vt %f %f\n", pTexCoords[i * 2], pTexCoords[i * 2 + 1]);
     }
-    for(unsigned i=0; i<stats->normals; i++) {
-        fprintf(file, "vn %f %f %f\n",
-                pNormals[i*3], pNormals[i*3+1], pNormals[i*3+2]);
+    for(unsigned i = 0; i < stats->normals; i++) {
+        fprintf(file, "vn %f %f %f\n", pNormals[i * 3], pNormals[i * 3 + 1],
+                pNormals[i * 3 + 2]);
     }
 
-    for(unsigned i=0; i<stats->indices; i += 9) {
-        unsigned *f = &pIndices[i];
-        fprintf(file, "f %u/%u/%u %u/%u/%u %u/%u/%u\n",
-            f[0]+1, f[1]+1, f[2]+1, f[3]+1, f[4]+1, f[5]+1, f[6]+1, f[7]+1, f[8]+1);
+    for(unsigned i = 0; i < stats->vertices; i += 3) {
+        unsigned *f = &pIndices[i * 3];
+        fprintf(file, "f %u/%u/%u %u/%u/%u %u/%u/%u\n", f[0] + 1, f[1] + 1,
+                f[2] + 1, f[3] + 1, f[4] + 1, f[5] + 1, f[6] + 1, f[7] + 1,
+                f[8] + 1);
     }
 }
 
 void meshPackVertices(Mesh *mesh, float *buffer) {
-    //meshOutput(mesh, stdout);
+    // meshOutput(mesh, stdout);
     MeshStats *stats = &mesh->stats;
 
     unsigned *pIndices = meshGetIndexPtr(mesh);
-    float *pVertices = meshGetVertexPtr(mesh);
-    float *pTexCoords = meshGetTexPtr(mesh);
-    float *pNormals = meshGetNormalPtr(mesh);
+    float *pVertices   = meshGetVertexPtr(mesh);
+    float *pTexCoords  = meshGetTexPtr(mesh);
+    float *pNormals    = meshGetNormalPtr(mesh);
 
-    for(unsigned i=0; i<stats->indices; i += 3) {
-        unsigned iv = pIndices[i];
-        unsigned it = pIndices[i+1];
-        unsigned in = pIndices[i+2];
+    for(unsigned i = 0; i < stats->vertices; i++) {
+        unsigned iv = pIndices[i * 3];
+        unsigned it = pIndices[i * 3 + 1];
+        unsigned in = pIndices[i * 3 + 2];
 
         buffer[0] = pVertices[iv * 3 + 0];
         buffer[1] = pVertices[iv * 3 + 1];
@@ -201,10 +211,10 @@ void meshPackVertices(Mesh *mesh, float *buffer) {
     }
 }
 
-int matchFaceDecl(const char *line) {
+int countFaceVertices(const char *line) {
     int a, *f = &a;
-    int res = sscanf(line, FACE_PATTERN, f,f,f,f,f,f,f,f,f,f,f,f);
-    return res == 9; // close enough
+    int res   = sscanf(line, FACE_PATTERN, f, f, f, f, f, f, f, f, f, f, f, f);
+    return res / 3;
 }
 
 int startsWith(const char *str, const char *token) {
@@ -213,24 +223,29 @@ int startsWith(const char *str, const char *token) {
 
 int tallyOBJFile(FILE *file, MeshStats *stats) {
     char line[256];
+    unsigned n = 1;
     char *res = NULL;
     memset(stats, 0, sizeof(MeshStats));
     fseek(file, 0, SEEK_SET);
     while((res = fgets(line, sizeof(line), file))) {
         if(startsWith(line, "v ")) {
-            stats->vertices++;
+            stats->positions++;
         } else if(startsWith(line, "vn ")) {
             stats->normals++;
         } else if(startsWith(line, "vt ")) {
             stats->texcoords++;
         } else if(startsWith(line, "f ")) {
-            if(!matchFaceDecl(line)) {
+            int numVerts = countFaceVertices(line);
+            if(numVerts == 3) {
+                stats->vertices += 3;
+            } else if(numVerts == 4) {
+                stats->vertices += 6; // we can split the quad later
+            } else {
+                fprintf(stderr, "error: couldn't parse face on line %u\n", n);
                 return 0;
             }
-            // these are triangles, so each face is three index triplets
-            stats->indices += 9;
-            stats->triangles++;
         }
+        n++;
     }
     return 1;
 }

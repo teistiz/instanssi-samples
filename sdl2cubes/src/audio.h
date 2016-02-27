@@ -3,7 +3,7 @@
 
 typedef struct AudioReader AudioReader;
 
-AudioReader* arInit(const char *filename);
+AudioReader *arInit(const char *filename);
 void arClose(AudioReader *ar);
 
 int arGetRate(AudioReader *ar);

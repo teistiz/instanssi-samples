@@ -45,11 +45,11 @@ GLuint buildShaderStageFromFile(GLenum type, const char *filename) {
     fseek(file, 0, SEEK_SET);
 
     // pass file contents for compilation
-    char *buf = malloc(len + 1);
+    char *buf  = malloc(len + 1);
     size_t got = fread(buf, 1, len, file);
     if(got == len) {
         buf[len] = '\0';
-        shader = buildShaderStage(type, buf, filename);
+        shader   = buildShaderStage(type, buf, filename);
     } else {
         fprintf(stderr, "Unable to fully read %s!\n", filename);
     }
@@ -72,7 +72,8 @@ void buildShaderFromSpecs(ShaderSourceSpec *spec) {
         goto exit;
     }
     if(spec->geomFile) {
-        geometry = buildShaderStageFromFile(GL_GEOMETRY_SHADER, spec->geomFile);
+        geometry =
+            buildShaderStageFromFile(GL_GEOMETRY_SHADER, spec->geomFile);
         if(!geometry) {
             goto exit;
         }
@@ -102,9 +103,15 @@ void buildShaderFromSpecs(ShaderSourceSpec *spec) {
     }
 
 exit:
-    if(vertex) { glDeleteShader(vertex); }
-    if(fragment) { glDeleteShader(fragment); }
-    if(geometry) { glDeleteShader(geometry); }
+    if(vertex) {
+        glDeleteShader(vertex);
+    }
+    if(fragment) {
+        glDeleteShader(fragment);
+    }
+    if(geometry) {
+        glDeleteShader(geometry);
+    }
     *spec->idPtr = program;
 }
 
@@ -118,7 +125,7 @@ void bindUniformBlock(int program, int slot, const char *name) {
 
 void reloadShaders() {
 
-    //printf("reloading shaders.\n");
+    // printf("reloading shaders.\n");
     // go through the shader source specs and replace the shaders.
     ShaderSourceSpec *spec = shaderSpecs;
     while(spec) {
@@ -135,27 +142,24 @@ void reloadShaders() {
                 spec->postCompile(spec);
             }
         }
-        spec = (ShaderSourceSpec*)spec->next;
+        spec = (ShaderSourceSpec *)spec->next;
     }
 }
 
-void addShaderSource(
-    GLuint *idPtr,
-    const char *vtxFile, const char *fragFile, const char *geomFile,
-    void (*postCompile)(ShaderSourceSpec*))
-{
+void addShaderSource(GLuint *idPtr, const char *vtxFile, const char *fragFile,
+                     const char *geomFile,
+                     void (*postCompile)(ShaderSourceSpec *)) {
     ShaderSourceSpec *spec = malloc(sizeof(ShaderSourceSpec));
     memset(spec, 0, sizeof(ShaderSourceSpec));
 
-    spec->idPtr = idPtr;
-    spec->vtxFile = vtxFile;
-    spec->fragFile = fragFile;
-    spec->geomFile = geomFile;
+    spec->idPtr       = idPtr;
+    spec->vtxFile     = vtxFile;
+    spec->fragFile    = fragFile;
+    spec->geomFile    = geomFile;
     spec->postCompile = postCompile;
 
     if(shaderSpecs) {
-        spec->next = (void*)shaderSpecs;
+        spec->next = (void *)shaderSpecs;
     }
     shaderSpecs = spec;
 }
-
