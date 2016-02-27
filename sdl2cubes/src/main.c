@@ -17,6 +17,8 @@
 #include "shaders.h"
 #include "mesh_obj.h"
 
+#define CUBES_DEBUG 1
+
 extern int runDemo(float dt);
 extern int initDemo();
 extern const char *WINDOW_TITLE;
@@ -43,6 +45,22 @@ void playAudio(const char *filename);
 void generateAudio(void *userdata, Uint8 *stream, int len);
 void presentWindow();
 void handleWindowResize(int width, int height);
+
+#ifdef _WIN32
+void __attribute__((__stdcall__)) debugCallback(
+    GLenum source, GLenum type, GLuint id, GLenum severity,
+    GLsizei length, const GLchar *message, const GLvoid *data)
+{
+    printf("%s\n", message);
+}
+#else
+void debugCallback(
+    GLenum source, GLenum type, GLuint id, GLenum severity,
+    GLsizei length, const GLchar *message, GLvoid *data)
+{
+    printf("%s\n", message);
+}
+#endif
 
 int main(int argc, char *argv[]) {
     SDL_Event event;
@@ -88,6 +106,21 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &g_glUniformAlignment);
+
+    if(CUBES_DEBUG && GLEW_ARB_debug_output) {
+        glEnable(GL_DEBUG_OUTPUT);
+        glDebugMessageCallback(&debugCallback, NULL);
+        // disable all messages
+        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE,
+            GL_DONT_CARE, 0, NULL, GL_FALSE);
+        // enable some critical messages
+        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE,
+            GL_DEBUG_SEVERITY_HIGH, 0, NULL, GL_TRUE);
+        glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR,
+            GL_DEBUG_SEVERITY_HIGH, 0, NULL, GL_TRUE);
+        glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR,
+            GL_DEBUG_SEVERITY_HIGH, 0, NULL, GL_TRUE);
+    }
 
     if(!initDemo()) {
         fprintf(stderr, "initDemo failed!\n");
