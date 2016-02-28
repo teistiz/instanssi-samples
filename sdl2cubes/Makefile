@@ -13,7 +13,7 @@ LIB_PATHS :=
 INCLUDE_PATHS :=
 
 ifdef SYSTEMROOT
-    # probably Windows/MSYS
+    # probably Windows/MinGW
     OUT := $(OUT).exe
     CC := $(CC).exe
 
@@ -36,7 +36,7 @@ LIBS += vorbisfile vorbis ogg
 #CFLAGS += -x c++ -std=gnu++11
 CFLAGS += -std=c11 -pedantic-errors
 # warn about many silly errors
-CFLAGS += -Wall -Wextra -Wshadow  -O2
+CFLAGS += -Wall -Wextra -Wshadow
 # This is where the system libs are.
 CFLAGS += $(addprefix -isystem , $(INCLUDE_PATHS)) -I./include/
 # This makes GCC and Clang automatically generate Makefile snippets that
@@ -47,7 +47,11 @@ LDFLAGS += $(addprefix -L, $(LIB_PATHS))
 # Add the library files
 LIBFLAGS += $(addprefix -l, $(LIBS))
 
+# optimize release builds
+release: CFLAGS += -O3
+# debug info goes into debug builds
 debug: CFLAGS += -g
+
 debug: $(OBJECTS)
 > $(CC) -g $(LDFLAGS) $(OBJECTS) -o $(OUT) $(LIBFLAGS)
 
