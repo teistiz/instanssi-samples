@@ -14,7 +14,7 @@ The source code has been known to build successfully on Debian and Windows (with
 
 ### Linux
 
-The included Makefile should work as-is on most Linux distributions. You'll need a compiler toolchain (e.g. the "build-essential" package on Debian, Ubuntu and relatives) and development packages for sdl2, ogg, vorbis and vorbisfile.
+The included Makefile should work as-is on most Linux distributions. You'll need a compiler toolchain (e.g. the "build-essential" package on Debian, Ubuntu and relatives) and development packages for sdl2, glew, ogg, vorbis and vorbisfile.
 
 ### Windows (Visual C++ 2015)
 
@@ -35,7 +35,7 @@ If the second command updates anything, restart the shell. If you want to, you c
 
 Then install the project dependencies:
 
-    pacman -S make mingw-w64-i686-SDL2 mingw-w64-i686-libvorbis mingw-w64-i686-gcc
+    pacman -S make mingw-w64-i686-SDL2 mingw-w64-i686-libvorbis mingw-w64-i686-gcc mingw-w64-i686-glew
 
 Many common libraries are available through the MSYS2 package repositories. You can search for additional packages using:
 
