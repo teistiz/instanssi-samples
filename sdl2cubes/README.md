@@ -14,7 +14,7 @@ The source code has been known to build successfully on Debian and Windows (with
 
 ### Linux
 
-The included Makefile should work as-is on most Linux distributions. You'll need a compiler toolchain (e.g. the "build-essentials" package on Ubuntu-likes) and development files for SDL2 and ogg, vorbis and vorbisfile.
+The included Makefile should work as-is on most Linux distributions. You'll need a compiler toolchain (e.g. the "build-essential" package on Debian, Ubuntu and relatives) and development packages for sdl2, ogg, vorbis and vorbisfile.
 
 ### Windows (Visual C++ 2015)
 
