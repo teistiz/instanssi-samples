@@ -1,3 +1,10 @@
+/**
+ * mesh_obj.c
+ * Rough OBJ mesh loader. Can read vertex positions, normals and texture coords
+ * and pack them into memory in a GPU-friendly format.
+ * Ignores materials as they aren't very useful with custom shaders.
+ */
+
 #include "mesh_obj.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,12 +33,12 @@ Mesh *meshReadOBJInternal(FILE *file, const char *filename) {
         fprintf(stderr, "error: unable to parse OBJ file %s\n", filename);
         return NULL;
     }
-    // allocate storage for all of these
-    // attribs will be float32, indices will be int32
+    // calculate storage for mesh contents
+    // positions and normals are 3 float32s each, texcoords are 2
     size_t attribBytes =
         4 * (stats.positions * 3 + stats.normals * 3 + stats.texcoords * 2);
     // each vertex has separate indices for position, normal and texture coord
-    size_t indexBytes = 4 * 3 * stats.vertices;
+    size_t indexBytes = sizeof(int) * 3 * stats.vertices;
 
     Mesh *mesh  = (Mesh *)malloc(sizeof(Mesh) + attribBytes + indexBytes);
     mesh->stats = stats;
@@ -94,34 +101,22 @@ unsigned emitTriangle(unsigned *pIndices, int v0, int t0, int n0, int v1,
     return 9;
 }
 
-// the indices haven't been converted to start from 0 yet, so
-// we test p > max instead of p >= max
-#define CHECK_VERTEX_POS(p)                                                   \
-    if(p < 1 || p > stats->positions) {                                       \
-        return 0;                                                             \
-    }
-#define CHECK_VERTEX_NORMAL(p)                                                \
-    if(p < 1 || p > stats->normals) {                                         \
-        return 0;                                                             \
-    }
-#define CHECK_VERTEX_TEX(p)                                                   \
-    if(p < 1 || p > stats->texcoords) {                                       \
-        return 0;                                                             \
-    }
+#define IN_RANGE(p, min, max) (p >= min && p <= max)
 
 int sanityCheck(Mesh *mesh, unsigned v0, unsigned t0, unsigned n0, unsigned v1,
                 unsigned t1, unsigned n1, unsigned v2, unsigned t2,
                 unsigned n2) {
     MeshStats *stats = &mesh->stats;
-    CHECK_VERTEX_POS(v0)
-    CHECK_VERTEX_POS(v1)
-    CHECK_VERTEX_POS(v2)
-    CHECK_VERTEX_NORMAL(n0)
-    CHECK_VERTEX_NORMAL(n1)
-    CHECK_VERTEX_NORMAL(n2)
-    CHECK_VERTEX_TEX(t0)
-    CHECK_VERTEX_TEX(t1)
-    CHECK_VERTEX_TEX(t2)
+    int ok = 1;
+    ok &= IN_RANGE(v0, 1, stats->positions);
+    ok &= IN_RANGE(v1, 1, stats->positions);
+    ok &= IN_RANGE(v2, 1, stats->positions);
+    ok &= IN_RANGE(n0, 1, stats->normals);
+    ok &= IN_RANGE(n1, 1, stats->normals);
+    ok &= IN_RANGE(n2, 1, stats->normals);
+    ok &= IN_RANGE(t0, 1, stats->texcoords);
+    ok &= IN_RANGE(t1, 1, stats->texcoords);
+    ok &= IN_RANGE(t2, 1, stats->texcoords);
     return 1;
 }
 
