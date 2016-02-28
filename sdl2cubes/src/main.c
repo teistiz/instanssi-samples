@@ -26,14 +26,13 @@ extern void resizeDemo();
 extern const char *WINDOW_TITLE;
 
 SDL_Window *g_sdlWindow = NULL;
-char *g_windowTitle = NULL;
+char *g_windowTitle     = NULL;
 
 int g_windowWidth       = 1280;
 int g_windowHeight      = 720;
-int g_fullScreen        = 0;
+float g_aspect          = 16.0f / 9.0f;
 int g_paused            = 0;
 unsigned g_mouseButtons = 0;
-float g_aspect          = 16.0f / 9.0f;
 float g_fps             = 0;
 
 int g_glUniformAlignment = 0;
@@ -70,19 +69,19 @@ void
 
 int main(int argc, char *argv[]) {
     SDL_Event event;
-    int running = 1;
+    int running    = 1;
+    int fullscreen = 0;
 
     for(int i = 0; i < argc; i++) {
         if(strcmp(argv[i], "--fullscreen") == 0) {
-            g_fullScreen = 1;
+            fullscreen = 1;
         }
     }
-
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 
     // https://wiki.libsdl.org/SDL_CreateWindow
     int flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
-    if(g_fullScreen) {
+    if(fullscreen) {
         flags |= SDL_WINDOW_FULLSCREEN;
     }
     g_sdlWindow =
@@ -96,11 +95,11 @@ int main(int argc, char *argv[]) {
 
     setWindowTitle("loading...");
 
-    // Set up GL context for the window.
+    // Set up an OpenGL context for the window.
     // OpenGL 3.3 Core is available on just about everything,
     // including Windows, free Linux drivers and OS X.
     // Recent mobile hardware is probably compatible with it, but
-    // the driver situation probably not quite there.
+    // the drivers may not be quite there.
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
                         SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
