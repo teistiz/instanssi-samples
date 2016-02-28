@@ -103,6 +103,8 @@ void buildShaderFromSpecs(ShaderSourceSpec *spec) {
     }
 
 exit:
+    // Deleting individual stages is ok at this point: they will not be
+    // freed by the GL implementation while the programs that use them exist.
     if(vertex) {
         glDeleteShader(vertex);
     }
@@ -125,7 +127,6 @@ void bindUniformBlock(int program, int slot, const char *name) {
 }
 
 void reloadShaders() {
-    // printf("reloading shaders.\n");
     // go through the shader source specs and replace the shaders.
     ShaderSourceSpec *spec = shaderSpecs;
     while(spec) {

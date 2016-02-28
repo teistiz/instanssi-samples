@@ -17,19 +17,13 @@ static unsigned *meshGetIndexPtr(Mesh *mesh);
 // scanf should return 9 for triangles and 12 for quads.
 const char FACE_PATTERN[] = "f %u/%u/%u %u/%u/%u %u/%u/%u %u/%u/%u";
 
-// Reads an .obj mesh from a file.
+// read .obj mesh from file with descriptive name for errors
 // Makes exactly one allocation.
-Mesh *meshReadOBJ(const char *filename) {
-    FILE *file = fopen(filename, "rb");
+Mesh *meshReadOBJInternal(FILE *file, const char *filename) {
     MeshStats stats;
-    if(!file) {
-        fprintf(stderr, "error: unable to open OBJ file %s\n", filename);
-        return NULL;
-    }
     // just parse the file twice, it's easier with formats like this
     if(!tallyOBJFile(file, &stats)) {
         fprintf(stderr, "error: unable to parse OBJ file %s\n", filename);
-        fclose(file);
         return NULL;
     }
     // allocate storage for all of these
@@ -52,13 +46,25 @@ Mesh *meshReadOBJ(const char *filename) {
         mesh = NULL;
     }
 
+    return mesh;
+}
+
+Mesh *meshReadOBJ(const char *filename) {
+    FILE *file = fopen(filename, "rb");
+    if(!file) {
+        fprintf(stderr, "error: unable to open OBJ file %s\n", filename);
+        return NULL;
+    }
+    Mesh *mesh = meshReadOBJInternal(file, filename);
     fclose(file);
     return mesh;
 }
 
-void meshClose(Mesh *mesh) {
-    free(mesh);
+Mesh *meshReadOBJF(FILE *file, const char *filename) {
+    return meshReadOBJInternal(file, filename);
 }
+
+void meshClose(Mesh *mesh) { free(mesh); }
 
 unsigned meshGetNumVertices(Mesh *mesh) { return mesh->stats.vertices; }
 unsigned meshGetNumFloats(Mesh *mesh) {
@@ -90,11 +96,22 @@ unsigned emitTriangle(unsigned *pIndices, int v0, int t0, int n0, int v1,
 
 // the indices haven't been converted to start from 0 yet, so
 // we test p > max instead of p >= max
-#define CHECK_VERTEX_POS(p)    if(p < 1 || p > stats->positions) { return 0; }
-#define CHECK_VERTEX_NORMAL(p) if(p < 1 || p > stats->normals) { return 0; }
-#define CHECK_VERTEX_TEX(p)    if(p < 1 || p > stats->texcoords) { return 0; }
+#define CHECK_VERTEX_POS(p)                                                   \
+    if(p < 1 || p > stats->positions) {                                       \
+        return 0;                                                             \
+    }
+#define CHECK_VERTEX_NORMAL(p)                                                \
+    if(p < 1 || p > stats->normals) {                                         \
+        return 0;                                                             \
+    }
+#define CHECK_VERTEX_TEX(p)                                                   \
+    if(p < 1 || p > stats->texcoords) {                                       \
+        return 0;                                                             \
+    }
 
-int sanityCheck(Mesh *mesh, unsigned v0, unsigned t0, unsigned n0, unsigned v1, unsigned t1, unsigned n1, unsigned v2, unsigned t2, unsigned n2) {
+int sanityCheck(Mesh *mesh, unsigned v0, unsigned t0, unsigned n0, unsigned v1,
+                unsigned t1, unsigned n1, unsigned v2, unsigned t2,
+                unsigned n2) {
     MeshStats *stats = &mesh->stats;
     CHECK_VERTEX_POS(v0)
     CHECK_VERTEX_POS(v1)
@@ -165,7 +182,8 @@ int loadOBJFile(FILE *file, Mesh *mesh) {
             int count = sscanf(line, FACE_PATTERN, &v0, &t0, &n0, &v1, &t1,
                                &n1, &v2, &t2, &n2, &v3, &t3, &n3);
             if(!sanityCheck(mesh, v0, t0, n0, v1, t1, n1, v2, t2, n2)) {
-                fprintf(stderr, "insane index value on line %u, aborting.\n", linenum);
+                fprintf(stderr, "insane index value on line %u, aborting.\n",
+                        linenum);
                 return 0;
             }
             if(count == 9) {
@@ -173,7 +191,9 @@ int loadOBJFile(FILE *file, Mesh *mesh) {
                                          t1, n1, v2, t2, n2);
             } else if(count == 12) {
                 if(!sanityCheck(mesh, v0, t0, n0, v2, t2, n2, v3, t3, n3)) {
-                    fprintf(stderr, "insane index value on line %u, aborting.\n", linenum);
+                    fprintf(stderr,
+                            "insane index value on line %u, aborting.\n",
+                            linenum);
                     return 0;
                 }
                 // split quad into two triangles
@@ -218,7 +238,6 @@ void meshOutput(Mesh *mesh, FILE *file) {
 }
 
 void meshPackVertices(Mesh *mesh, float *buffer) {
-    // meshOutput(mesh, stdout);
     MeshStats *stats = &mesh->stats;
 
     unsigned *pIndices = meshGetIndexPtr(mesh);
@@ -226,6 +245,7 @@ void meshPackVertices(Mesh *mesh, float *buffer) {
     float *pTexCoords  = meshGetTexPtr(mesh);
     float *pNormals    = meshGetNormalPtr(mesh);
 
+    // at this point the indices should have been validated
     for(unsigned i = 0; i < stats->vertices; i++) {
         unsigned iv = pIndices[i * 3];
         unsigned it = pIndices[i * 3 + 1];

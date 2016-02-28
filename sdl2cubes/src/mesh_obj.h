@@ -1,27 +1,34 @@
 #ifndef CUBES_MESH_H
 #define CUBES_MESH_H
 
+#include <stdio.h>
+
+// mesh data size counters
 typedef struct MeshStats {
-    unsigned positions, normals, texcoords, vertices;
+    unsigned positions; // # of unique vertex positions
+    unsigned normals;   // # of unique normal vectors
+    unsigned texcoords; // # of unique texcoords
+    unsigned vertices;  // # of vertices
 } MeshStats;
 
+// parsed mesh data
 typedef struct Mesh {
-    MeshStats stats;
-    // Holds mesh attributes in float32 format.
-    // Vertices first, then texcoords, then normals.
-    float *attribs;
-    // Triangle indices.
-    unsigned *indices;
+    MeshStats stats;   // stats about mesh
+    float *attribs;    // raw vertex attribute data
+    unsigned *indices; // raw index data
 } Mesh;
 
-// Reads a mesh from a named file. May return NULL on failure.
+// read mesh from named file
 Mesh *meshReadOBJ(const char *filename);
-// Frees any data associated with a mesh.
+// read mesh from file object, with descriptive filename
+Mesh *meshReadOBJF(FILE *file, const char *filename);
+// free data associated with a mesh
 void meshClose(Mesh *mesh);
-// Returns the number of floats the mesh data contains.
+// get number of floats in a mesh
 unsigned meshGetNumFloats(Mesh *mesh);
+// get number of vertices in a mesh
 unsigned meshGetNumVertices(Mesh *mesh);
-// Tries to pack the mesh's attrib data into the target location.
+// pack data into target buffer (with space for meshGetNumFloats(mesh) floats)
 void meshPackVertices(Mesh *mesh, float *buffer);
 
 #endif
