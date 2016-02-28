@@ -71,15 +71,23 @@ Mesh *meshReadOBJF(FILE *file, const char *filename) {
     return meshReadOBJInternal(file, filename);
 }
 
-void meshClose(Mesh *mesh) { free(mesh); }
+void meshClose(Mesh *mesh) {
+    free(mesh);
+}
 
-unsigned meshGetNumVertices(Mesh *mesh) { return mesh->stats.vertices; }
+unsigned meshGetNumVertices(Mesh *mesh) {
+    return mesh->stats.vertices;
+}
 unsigned meshGetNumFloats(Mesh *mesh) {
     // each vertex is made of a (vec3 pos, vec2 tex, vec3 normal)
     return meshGetNumVertices(mesh) * (3 + 2 + 3);
 }
-unsigned *meshGetIndexPtr(Mesh *mesh) { return mesh->indices; }
-float *meshGetVertexPtr(Mesh *mesh) { return mesh->attribs; }
+unsigned *meshGetIndexPtr(Mesh *mesh) {
+    return mesh->indices;
+}
+float *meshGetVertexPtr(Mesh *mesh) {
+    return mesh->attribs;
+}
 float *meshGetTexPtr(Mesh *mesh) {
     return meshGetVertexPtr(mesh) + 3 * mesh->stats.positions;
 }

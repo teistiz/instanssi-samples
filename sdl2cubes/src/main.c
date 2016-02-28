@@ -297,7 +297,9 @@ void generateAudio(void *userdata, Uint8 *stream, int len) {
 /**
  * Present the GL context's backbuffer to the screen.
  */
-void presentWindow() { SDL_GL_SwapWindow(g_sdlWindow); }
+void presentWindow() {
+    SDL_GL_SwapWindow(g_sdlWindow);
+}
 
 /**
  * Resizes the window

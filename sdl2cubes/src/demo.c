@@ -88,7 +88,9 @@ int initDemo() {
     return 1;
 }
 
-void resizeDemo() { initRenderTargets(); }
+void resizeDemo() {
+    initRenderTargets();
+}
 
 void updateShaderGlobals(FrameParams *gu);
 void drawScene();
@@ -184,7 +186,9 @@ unsigned char *objectQueue = NULL;
 unsigned objectQueuePos    = 0;
 unsigned objectStride      = 0; // see initBuffers()
 
-unsigned getObjectQueueOffset(int pos) { return objectStride * pos; }
+unsigned getObjectQueueOffset(int pos) {
+    return objectStride * pos;
+}
 
 unsigned padToAlign(unsigned size, unsigned align) {
     return size + (align - (size % align)) % align;
@@ -384,7 +388,9 @@ void tfsCreate(TransformStack **p, unsigned maxSize) {
     tfsClear(*p);
 }
 
-Transform tfsGet(TransformStack *tfs) { return tfs->t[tfs->pos]; }
+Transform tfsGet(TransformStack *tfs) {
+    return tfs->t[tfs->pos];
+}
 
 void tfsPop(TransformStack *tfs) {
     assert(tfs->pos > 0);

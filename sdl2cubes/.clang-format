@@ -6,4 +6,5 @@ AlignConsecutiveAssignments: true
 AlignOperands: true
 SpaceBeforeParens: Never
 UseTab: Never
-
+AllowShortFunctionsOnASingleLine: None
+AllowShortBlocksOnASingleLine: false
