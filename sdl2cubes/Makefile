@@ -33,10 +33,10 @@ endif
 LIBS += vorbisfile vorbis ogg
 
 # C is standard C11
-# CFLAGS += -x c++ -std=c++11
-CFLAGS += -std=c11
+#CFLAGS += -x c++ -std=gnu++11
+CFLAGS += -std=c11 -pedantic-errors
 # warn about many silly errors
-CFLAGS += -Wall -Wextra -Wshadow -pedantic-errors -O2
+CFLAGS += -Wall -Wextra -Wshadow  -O2
 # This is where the system libs are.
 CFLAGS += $(addprefix -isystem , $(INCLUDE_PATHS)) -I./include/
 # This makes GCC and Clang automatically generate Makefile snippets that

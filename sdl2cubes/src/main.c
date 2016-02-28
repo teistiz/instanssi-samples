@@ -12,6 +12,7 @@
 #include <SDL2/SDL.h>
 #include <assert.h>
 
+#include "main.h"
 #include "image.h"
 #include "audio.h"
 #include "shaders.h"
@@ -25,6 +26,7 @@ extern void resizeDemo();
 extern const char *WINDOW_TITLE;
 
 SDL_Window *g_sdlWindow = NULL;
+char *g_windowTitle = NULL;
 
 int g_windowWidth       = 1280;
 int g_windowHeight      = 720;
@@ -32,6 +34,7 @@ int g_fullScreen        = 0;
 int g_paused            = 0;
 unsigned g_mouseButtons = 0;
 float g_aspect          = 16.0f / 9.0f;
+float g_fps             = 0;
 
 int g_glUniformAlignment = 0;
 Uint32 g_ticks, g_lastTicks;
@@ -46,6 +49,7 @@ void playAudio(const char *filename);
 void generateAudio(void *userdata, Uint8 *stream, int len);
 void presentWindow();
 void handleWindowResize(int width, int height);
+void trackPerformance(unsigned deltaMillis);
 
 #if defined(__GNUC__)
 #define UNUSED(x) x __attribute__((unused))
@@ -90,9 +94,13 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    setWindowTitle("loading...");
+
     // Set up GL context for the window.
     // OpenGL 3.3 Core is available on just about everything,
     // including Windows, free Linux drivers and OS X.
+    // Recent mobile hardware is probably compatible with it, but
+    // the driver situation probably not quite there.
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
                         SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -199,9 +207,12 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        g_ticks     = SDL_GetTicks();
-        float dt    = (g_ticks - g_lastTicks) * 0.001f;
-        g_lastTicks = g_ticks;
+        g_ticks              = SDL_GetTicks();
+        unsigned deltaMillis = g_ticks - g_lastTicks;
+        float dt             = deltaMillis * 0.001f;
+        g_lastTicks          = g_ticks;
+
+        trackPerformance(deltaMillis);
 
         // run demo, check if we're done yet
         running &= runDemo(dt);
@@ -215,15 +226,58 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+enum { NUM_FRAMEDELTAS = 32 };
+
+unsigned frameDeltas[NUM_FRAMEDELTAS] = {0};
+
+unsigned sumFrameDeltas     = 0;
+unsigned fdIndex            = 0;
+unsigned titleUpdateCounter = 0;
+
+/**
+ * Track framerates and update the window title.
+ */
+void trackPerformance(unsigned deltaMillis) {
+    sumFrameDeltas -= frameDeltas[fdIndex];
+    frameDeltas[fdIndex] = deltaMillis;
+    sumFrameDeltas += deltaMillis;
+    fdIndex = (fdIndex + 1) % NUM_FRAMEDELTAS;
+
+    titleUpdateCounter += deltaMillis;
+    if(titleUpdateCounter > 1000) {
+        titleUpdateCounter = titleUpdateCounter % 1000;
+        float fps          = 1000.0f * NUM_FRAMEDELTAS / sumFrameDeltas;
+        char tmp[256];
+        const char *title = g_windowTitle ? g_windowTitle : "";
+        snprintf(tmp, sizeof(tmp), "%s (%.1f FPS)", title, fps);
+        SDL_SetWindowTitle(g_sdlWindow, tmp);
+    }
+}
+
+/**
+ * Sets the song that should be playing.
+ * @note Only meant to be called once.
+ */
 void setSoundtrack(const char *filename) {
     assert(!g_audioState.reader);
     g_audioState.reader = arInit(filename);
 }
 
+/**
+ * Set the window title.
+ */
 void setWindowTitle(const char *title) {
-    SDL_SetWindowTitle(g_sdlWindow, title);
+    if(g_windowTitle) {
+        free(g_windowTitle);
+    }
+    g_windowTitle = malloc(strlen(title) + 1);
+    strcpy(g_windowTitle, title);
 }
 
+/**
+ * SDL2's need-more-audio callback.
+ * @note This will be called from another thread.
+ */
 void generateAudio(void *userdata, Uint8 *stream, int len) {
     AudioState *state = (AudioState *)userdata;
     int ofs           = arRead(state->reader, stream, len);
@@ -233,8 +287,14 @@ void generateAudio(void *userdata, Uint8 *stream, int len) {
     }
 }
 
+/**
+ * Present the GL context's backbuffer to the screen.
+ */
 void presentWindow() { SDL_GL_SwapWindow(g_sdlWindow); }
 
+/**
+ * Resizes the window
+ */
 void handleWindowResize(int width, int height) {
     g_windowWidth  = width;
     g_windowHeight = height;

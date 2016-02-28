@@ -125,7 +125,6 @@ void bindUniformBlock(int program, int slot, const char *name) {
 }
 
 void reloadShaders() {
-
     // printf("reloading shaders.\n");
     // go through the shader source specs and replace the shaders.
     ShaderSourceSpec *spec = shaderSpecs;

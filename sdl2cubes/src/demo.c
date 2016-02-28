@@ -259,7 +259,7 @@ void initBuffers() {
 
     glGenBuffers(1, &g_ubObjects);
     objectStride = getUniformStride(sizeof(ObjectParams));
-    objectQueue = malloc(objectStride * OBJECT_QUEUE_SIZE);
+    objectQueue = (unsigned char *)malloc(objectStride * OBJECT_QUEUE_SIZE);
     glBindBuffer(GL_UNIFORM_BUFFER, g_ubObjects);
     glBufferData(GL_UNIFORM_BUFFER, objectStride * OBJECT_QUEUE_SIZE, NULL,
                  GL_DYNAMIC_DRAW);
