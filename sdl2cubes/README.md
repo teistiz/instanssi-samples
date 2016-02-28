@@ -2,7 +2,7 @@
 
 Basic multiplatform framework for intros and other realtime graphics stuff using SDL2, OpenGL 3.3+ and libvorbis.
 
-If pointer arithmetic, memory alignment rules and other things confuse you, you may either learn something or this or become even more confused.
+If pointer arithmetic, memory alignment rules and other things confuse you, you may either learn something from this or become even more confused.
 
 ## Debugging
 
