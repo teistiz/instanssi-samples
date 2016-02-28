@@ -20,7 +20,7 @@ ifdef SYSTEMROOT
     CFLAGS += -static -DWINDOWS
     LDFLAGS += -static
 
-    LIBS += mingw32 SDL2main SDL2.dll glew32s opengl32
+    LIBS += mingw32 SDL2main SDL2.dll glew32 opengl32
     INCLUDE_PATHS += deps/include
     LIB_PATHS += deps/lib
 else
