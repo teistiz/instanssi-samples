@@ -4,7 +4,11 @@ Basic multiplatform framework for intros and other realtime graphics stuff using
 
 If pointer arithmetic, memory alignment rules and other things confuse you, you may either learn something or this or become even more confused.
 
-## Building C/C++
+## Debugging
+
+Use apitrace! It can record the GL calls your program makes, view them and play them back later with error checking. You can also inspect the GL state at each call to see if your shaders are getting data or garbage.
+
+## Building
 
 The source code has been known to build successfully on Debian and Windows (with MSYS2).
 
