@@ -56,6 +56,10 @@ Mesh *meshReadOBJ(const char *filename) {
     return mesh;
 }
 
+void meshClose(Mesh *mesh) {
+    free(mesh);
+}
+
 unsigned meshGetNumVertices(Mesh *mesh) { return mesh->stats.vertices; }
 unsigned meshGetNumFloats(Mesh *mesh) {
     // each vertex is made of a (vec3 pos, vec2 tex, vec3 normal)
@@ -84,6 +88,26 @@ unsigned emitTriangle(unsigned *pIndices, int v0, int t0, int n0, int v1,
     return 9;
 }
 
+// the indices haven't been converted to start from 0 yet, so
+// we test p > max instead of p >= max
+#define CHECK_VERTEX_POS(p)    if(p < 1 || p > stats->positions) { return 0; }
+#define CHECK_VERTEX_NORMAL(p) if(p < 1 || p > stats->normals) { return 0; }
+#define CHECK_VERTEX_TEX(p)    if(p < 1 || p > stats->texcoords) { return 0; }
+
+int sanityCheck(Mesh *mesh, unsigned v0, unsigned t0, unsigned n0, unsigned v1, unsigned t1, unsigned n1, unsigned v2, unsigned t2, unsigned n2) {
+    MeshStats *stats = &mesh->stats;
+    CHECK_VERTEX_POS(v0)
+    CHECK_VERTEX_POS(v1)
+    CHECK_VERTEX_POS(v2)
+    CHECK_VERTEX_NORMAL(n0)
+    CHECK_VERTEX_NORMAL(n1)
+    CHECK_VERTEX_NORMAL(n2)
+    CHECK_VERTEX_TEX(t0)
+    CHECK_VERTEX_TEX(t1)
+    CHECK_VERTEX_TEX(t2)
+    return 1;
+}
+
 int loadOBJFile(FILE *file, Mesh *mesh) {
     // Just collect all the attribs and indices.
     // Converting OBJ indexing into GL-compatible stuff can follow when we
@@ -101,27 +125,38 @@ int loadOBJFile(FILE *file, Mesh *mesh) {
     unsigned *pIndices = meshGetIndexPtr(mesh);
 
     char line[256];
+    unsigned linenum = 0;
 
     fseek(file, 0, SEEK_SET);
 
     while((res = fgets(line, sizeof(line), file))) {
+        linenum++;
         if(startsWith(line, "v ")) {
             x = y = z = 0.0f;
-            sscanf(line, "v %f %f %f", &x, &y, &z);
-            pVertices[vertexOfs++] = x;
-            pVertices[vertexOfs++] = y;
-            pVertices[vertexOfs++] = z;
+            if(sscanf(line, "v %f %f %f", &x, &y, &z) == 3) {
+                pVertices[vertexOfs++] = x;
+                pVertices[vertexOfs++] = y;
+                pVertices[vertexOfs++] = z;
+            } else {
+                return 0;
+            }
         } else if(startsWith(line, "vn ")) {
             x = y = z = 0.0f;
-            sscanf(line, "vn %f %f %f", &x, &y, &z);
-            pNormals[normalOfs++] = x;
-            pNormals[normalOfs++] = y;
-            pNormals[normalOfs++] = z;
+            if(sscanf(line, "vn %f %f %f", &x, &y, &z) == 3) {
+                pNormals[normalOfs++] = x;
+                pNormals[normalOfs++] = y;
+                pNormals[normalOfs++] = z;
+            } else {
+                return 0;
+            }
         } else if(startsWith(line, "vt ")) {
             x = y = 0.0f;
-            sscanf(line, "vt %f %f", &x, &y);
-            pTexCoords[texOfs++] = x;
-            pTexCoords[texOfs++] = y;
+            if(sscanf(line, "vt %f %f", &x, &y) == 2) {
+                pTexCoords[texOfs++] = x;
+                pTexCoords[texOfs++] = y;
+            } else {
+                return 0;
+            }
         } else if(startsWith(line, "f ")) {
             // the indices start from 1, so let's fix that here
             unsigned v0, v1, v2, v3;
@@ -129,10 +164,18 @@ int loadOBJFile(FILE *file, Mesh *mesh) {
             unsigned t0, t1, t2, t3;
             int count = sscanf(line, FACE_PATTERN, &v0, &t0, &n0, &v1, &t1,
                                &n1, &v2, &t2, &n2, &v3, &t3, &n3);
+            if(!sanityCheck(mesh, v0, t0, n0, v1, t1, n1, v2, t2, n2)) {
+                fprintf(stderr, "insane index value on line %u, aborting.\n", linenum);
+                return 0;
+            }
             if(count == 9) {
                 indexOfs += emitTriangle(pIndices + indexOfs, v0, t0, n0, v1,
                                          t1, n1, v2, t2, n2);
             } else if(count == 12) {
+                if(!sanityCheck(mesh, v0, t0, n0, v2, t2, n2, v3, t3, n3)) {
+                    fprintf(stderr, "insane index value on line %u, aborting.\n", linenum);
+                    return 0;
+                }
                 // split quad into two triangles
                 indexOfs += emitTriangle(pIndices + indexOfs, v0, t0, n0, v1,
                                          t1, n1, v2, t2, n2);

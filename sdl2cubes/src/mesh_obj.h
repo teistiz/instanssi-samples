@@ -14,7 +14,7 @@ typedef struct Mesh {
     unsigned *indices;
 } Mesh;
 
-// Reads a mesh from a file. May return NULL on failure.
+// Reads a mesh from a named file. May return NULL on failure.
 Mesh *meshReadOBJ(const char *filename);
 // Frees any data associated with a mesh.
 void meshClose(Mesh *mesh);

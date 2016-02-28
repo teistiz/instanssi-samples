@@ -63,3 +63,11 @@ clean:
 
 %.o : %.c
 > $(CC) -c $(CFLAGS) $< -o $@
+
+TEST_SOURCES := $(wildcard tests/*.c)
+TEST_OBJECTS := $(TEST_SOURCES:.c=.o)
+
+test_mesh: CC := afl-gcc
+test_mesh: src/mesh_obj.o tests/test_mesh.o
+> afl-gcc tests/test_mesh.o src/mesh_obj.o -o test_mesh
+
