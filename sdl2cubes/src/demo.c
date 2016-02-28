@@ -19,7 +19,7 @@ float g_time = 0;
 // These can be passed to shaders as-is, as long as they match GLSL's layout
 // rules. Basically things are aligned to their size, except that
 // vec3 aligns like vec4 and matrices align to their column size
-// (vec2/vec3/vec4). Arrays align to their elements' size (iirc).
+// (vec2/vec3/vec4). Arrays align to their elements' size by the same rules.
 // See https://www.opengl.org/registry/doc/glspec45.core.pdf#page=159 .
 typedef struct FrameParams {
     Transform projection;
@@ -28,8 +28,10 @@ typedef struct FrameParams {
 
 typedef struct ObjectParams { Transform transform; } ObjectParams;
 
-Transform g_tfProjection;
-TransformStack *g_tfsView;
+// GL 3.3 Core does not have the older versions' built-in transformation matrix
+// stacks, so this program has to implement something similar on its own.
+Transform g_tfProjection;  // current projection transform
+TransformStack *g_tfsView; // model/view transform
 
 typedef struct RenderMesh {
     GLuint vertexArray; // vertex array object id
@@ -37,21 +39,27 @@ typedef struct RenderMesh {
     unsigned vertices;  // number of vertices
 } RenderMesh;
 
+// ---- GL resources ----
+
 GLuint g_vaQuad    = 0; // vertex array for the quad
 GLuint g_bufQuad   = 0; // data buffer for the quad
-GLuint g_ubGlobals = 0; // uniform buffer for per-frame globals
+GLuint g_ubGlobals = 0; // uniform buffer for per-frame data
+GLuint g_ubObjects = 0; // uniform buffer for per-object data
 
-GLuint g_ubObjects = 0; // uniform buffer for per-object params
-
-GLuint g_texTest    = 0; // test texture
-GLuint g_texAtlas   = 0; // overlay graphics
-GLuint g_shaderMesh = 0; // shader for simple meshes
-RenderMesh g_meshCube;   // mesh object
+GLuint g_fbOffscreen  = 0; // offscreen render target for effects
+GLuint g_texOffscreen = 0; // offscreen render target's color texture
+GLuint g_rbOffscreen  = 0; // offscreen render target's depth buffer
+GLuint g_texTest      = 0; // test texture
+GLuint g_texAtlas     = 0; // overlay graphics
+GLuint g_shaderMesh   = 0; // shader for simple meshes
+GLuint g_shaderPostFX = 0; // shader for simple meshes
+RenderMesh g_meshCube;     // mesh object
 
 void loadMesh(RenderMesh *dest, const char *filename);
 void loadTexture(GLuint *dest, const char *filename);
 
 void initBuffers();
+void initRenderTargets();
 void drawQuad();
 
 /**
@@ -71,13 +79,16 @@ int initDemo() {
 
     addShaderSource(&g_shaderMesh, "res/mesh.vert.glsl", "res/mesh.frag.glsl",
                     NULL, NULL);
-    addShaderSource(&g_shaderMesh, "res/postfx.vert.glsl",
+    addShaderSource(&g_shaderPostFX, "res/postfx.vert.glsl",
                     "res/postfx.frag.glsl", NULL, NULL);
 
     reloadShaders();
     initBuffers();
+    initRenderTargets();
     return 1;
 }
+
+void resizeDemo() { initRenderTargets(); }
 
 void updateShaderGlobals(FrameParams *gu);
 void drawScene();
@@ -96,17 +107,16 @@ int runDemo(float dt) {
     // if our demo had a script, this would be a good point
     // to check if stuff is habbening
 
-    // render and present
+    glBindFramebuffer(GL_FRAMEBUFFER, g_fbOffscreen);
+    glDepthMask(GL_TRUE);
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
+
     glClearColor(.2f, .2f, .2f, 0);
     glClearDepth(1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_DEPTH_TEST);
-
     glUseProgram(g_shaderMesh);
-
-    // ---- pass per-frame globals ----
 
     FrameParams fp;
     fp.projection = tfPerspective(0.1f, 5000.0f, g_aspect, M_PI * 0.3f);
@@ -114,18 +124,25 @@ int runDemo(float dt) {
     updateShaderGlobals(&fp);
 
     // ---- draw objects and stuff ----
-
     tfsClear(g_tfsView); // reset transform stack
-    // (this would be a good spot to do camera transformations)
-
-    // move camera back (-1 is inward, but we move the camera by moving the
-    // scene)
-    tfsApply(g_tfsView, tfTranslate(0, 0, -5));
+    // (this would be a good spot to position the camera)
+    tfsApply(g_tfsView, tfTranslate(0, 0, -5)); // position
 
     drawScene();
 
-    // show what we just drew
-    presentWindow();
+    // ---- postprocessing and overlays ---
+    glBindFramebuffer(GL_FRAMEBUFFER, 0); // disable offscreen render target
+
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE); // don't write depth so we don't have to clear it
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, g_texOffscreen); // use offscreen RT texture
+    glUseProgram(g_shaderPostFX);
+
+    drawQuad();
+
+    presentWindow(); // flip buffers
     return 1;
 }
 
@@ -271,6 +288,38 @@ void initBuffers() {
     // bound ARRAY_BUFFER, with no normalization, 0 stride (= tight packing)
     // starting from offset 0 in the buffer.
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+}
+
+void initRenderTargets() {
+    // since we allowed window resizing, we want this to work multiple times
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    if(!g_texOffscreen) {
+        glGenTextures(1, &g_texOffscreen);
+    }
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, g_texOffscreen);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, g_windowWidth, g_windowHeight, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    if(g_fbOffscreen) {
+        glDeleteFramebuffers(1, &g_fbOffscreen);
+    }
+    glGenFramebuffers(1, &g_fbOffscreen);
+    glBindFramebuffer(GL_FRAMEBUFFER, g_fbOffscreen);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                           g_texOffscreen, 0);
+
+    if(!g_rbOffscreen) {
+        glGenRenderbuffers(1, &g_rbOffscreen);
+    }
+    glBindRenderbuffer(GL_RENDERBUFFER, g_rbOffscreen);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, g_windowWidth,
+                          g_windowHeight);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                              GL_RENDERBUFFER, g_rbOffscreen);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 RenderMesh loadMeshToArray(const char *filename) {

@@ -2,6 +2,9 @@
 #define CUBES_MAIN_H
 
 extern float g_aspect;
+extern int g_windowWidth;
+extern int g_windowHeight;
+
 extern float g_time;
 
 extern int g_glUniformAlignment;

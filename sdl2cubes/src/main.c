@@ -17,10 +17,11 @@
 #include "shaders.h"
 #include "mesh_obj.h"
 
-#define CUBES_DEBUG 1
+#define CUBES_DEBUG 0
 
 extern int runDemo(float dt);
 extern int initDemo();
+extern void resizeDemo();
 extern const char *WINDOW_TITLE;
 
 SDL_Window *g_sdlWindow = NULL;
@@ -54,11 +55,12 @@ void handleWindowResize(int width, int height);
 
 void
 #ifdef WINDOWS
-__attribute__((__stdcall__))
+    __attribute__((__stdcall__))
 #endif
-debugCallback(GLenum UNUSED(source), GLenum UNUSED(type), GLuint UNUSED(id),
-              GLenum UNUSED(severity), GLsizei UNUSED(length),
-              const GLchar *message, const GLvoid UNUSED(*data)) {
+    debugCallback(GLenum UNUSED(source), GLenum UNUSED(type),
+                  GLuint UNUSED(id), GLenum UNUSED(severity),
+                  GLsizei UNUSED(length), const GLchar *message,
+                  const GLvoid UNUSED(*data)) {
     printf("%s\n", message);
 }
 
@@ -238,4 +240,5 @@ void handleWindowResize(int width, int height) {
     g_windowHeight = height;
     g_aspect = (float)width / height;
     glViewport(0, 0, width, height);
+    resizeDemo();
 }
