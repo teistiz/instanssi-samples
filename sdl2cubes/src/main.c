@@ -35,8 +35,8 @@ int g_paused            = 0;
 unsigned g_mouseButtons = 0;
 float g_fps             = 0;
 
-int g_glUniformAlignment = 0;
 Uint32 g_ticks, g_lastTicks;
+int g_glUniformAlignment = 0;
 
 typedef struct AudioState { AudioReader *reader; } AudioState;
 AudioState g_audioState = {NULL};
@@ -67,6 +67,9 @@ void
     printf("%s\n", message);
 }
 
+/**
+ * Set up SDL2, create a window, initialize the demo and run event loop.
+ */
 int main(int argc, char *argv[]) {
     SDL_Event event;
     int running    = 1;
@@ -114,8 +117,11 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "glewInit failed!\n");
         return 1;
     }
+    // We'll need this when passing data to shaders.
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &g_glUniformAlignment);
 
+    // ARB_debug_output can be used to log GL errors asynchronously.
+    // Note that this may interfere with apitrace.
     if(CUBES_DEBUG && GLEW_ARB_debug_output) {
         glEnable(GL_DEBUG_OUTPUT);
         glDebugMessageCallback(&debugCallback, NULL);
@@ -135,6 +141,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "initDemo failed!\n");
         return 1;
     }
+    // If the demo loaded a soundtrack, set up SDL to accept its audio data.
     if(g_audioState.reader) {
         // https://wiki.libsdl.org/CategoryAudio
         SDL_AudioSpec requested, got;
@@ -149,6 +156,8 @@ int main(int argc, char *argv[]) {
         // start playing sound
         SDL_PauseAudioDevice(g_audioDevice, 0);
     }
+    // Enter the event loop. This polls and handles window events and runs
+    // the demo for one frame when done.
     g_lastTicks           = SDL_GetTicks();
     unsigned frameCounter = 0;
     while(running) {
