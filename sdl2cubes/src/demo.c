@@ -155,9 +155,11 @@ void drawScene() {
 
     float t = g_time;
 
+    int NUM_CUBES = 20;
+
     ObjectParams objectParams;
-    for(int i = 0; i < 10; i++) {
-        float p = i / 10.0f;
+    for(int i = 0; i < NUM_CUBES; i++) {
+        float p = (float)i / NUM_CUBES;
 
         float avel  = 0.2f;
         float angle = p * M_PI * 2 + t * avel;
@@ -200,6 +202,7 @@ unsigned getUniformStride(unsigned size) {
 }
 
 void queueObject(ObjectParams *params) {
+    // TODO: take arguments for texture, mesh, etc. and store them too
     if(objectQueuePos == OBJECT_QUEUE_SIZE) {
         flushObjects();
     }
@@ -215,6 +218,10 @@ void flushObjects() {
     }
     glBindVertexArray(g_meshCube.vertexArray);
     glBindBuffer(GL_UNIFORM_BUFFER, g_ubObjects);
+
+    // FIXME: There are many faster ways to do this, including at least:
+    // - buffer orphaning through glBufferData
+    // - persistent-mapped buffers (GL 4.3+, but available on many GL3 impls)
     glBufferSubData(GL_UNIFORM_BUFFER, 0, objectStride * objectQueuePos,
                     objectQueue);
 
