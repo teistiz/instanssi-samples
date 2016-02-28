@@ -1,7 +1,6 @@
 /**
  * main.c
- * More cubes! This time in C11 with  SDL2 and OpenGL 3.3 Core.
- * License: WTFPL
+ * More cubes! This time in C11 with SDL2 and OpenGL 3.3 Core.
  */
 
 #include <stdio.h>
