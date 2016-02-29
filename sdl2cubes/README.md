@@ -4,10 +4,6 @@ Basic multiplatform framework for intros and other realtime graphics stuff using
 
 If pointer arithmetic, memory alignment rules and other things confuse you, you may either learn something from this or become even more confused.
 
-## Debugging
-
-Use apitrace! It can record the GL calls your program makes, view them and play them back later with error checking. You can also inspect the GL state at each call to see if your shaders are getting data or garbage.
-
 ## Building
 
 The source code has been known to build successfully on Debian and Windows (with MSYS2).
@@ -44,3 +40,7 @@ Many common libraries are available through the MSYS2 package repositories. You 
 Most libraries are available for both 64- and 32-bit targets. The instructions here assume a 32-bit target. You can also place your third party dependencies' libraries and headers in the `deps/` folder. Again, mind the target architecture.
 
 Note that the `msys_make.bat` script used by the Visual Studio Code project to invoke Make assumes MSYS2 is installed to `C:\msys32`; if this is not the case, just edit the batch file.
+
+## Debugging
+
+Use apitrace! It can record the GL calls your program makes, view them and play them back later with error checking. You can also inspect the GL state at each call to see if your shaders are getting data or garbage.
