@@ -55,6 +55,12 @@ void trackPerformance(unsigned deltaMillis);
 #define UNUSED(x) x
 #endif
 
+#if 0
+
+// GL specs can't seem to agree on the signature of this function,
+// causing pain when attempting to build on different platforms.
+// Just use apitrace.
+
 void
 #ifdef WINDOWS
     __attribute__((__stdcall__))
@@ -65,6 +71,7 @@ void
                   const GLvoid UNUSED(*data)) {
     printf("%s\n", message);
 }
+#endif
 
 /**
  * Set up SDL2, create a window, initialize the demo and run event loop.
@@ -119,6 +126,7 @@ int main(int argc, char *argv[]) {
     // We'll need this when passing data to shaders.
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &g_glUniformAlignment);
 
+#if 0
     // ARB_debug_output can be used to log GL errors asynchronously.
     // Note that this may interfere with apitrace.
     if(CUBES_DEBUG && GLEW_ARB_debug_output) {
@@ -135,6 +143,7 @@ int main(int argc, char *argv[]) {
         glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR,
                               GL_DEBUG_SEVERITY_HIGH, 0, NULL, GL_TRUE);
     }
+#endif
 
     if(!initDemo()) {
         fprintf(stderr, "initDemo failed!\n");
